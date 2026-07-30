@@ -1,8 +1,8 @@
-const CACHE_NAME = 'cs40-calendar-v1';
+const CACHE_NAME = 'cs33-calendar-v1';
 const urlsToCache = [
   './index.html',
   './manifest.json',
-  'https://www.aviatorgear.com/images/product/large/39950.jpg'
+  'https://www.usafa.edu/app/uploads/CS33.jpg'
 ];
 
 self.addEventListener('install', (event) => {
