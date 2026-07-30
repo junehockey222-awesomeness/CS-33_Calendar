@@ -1,134 +1,111 @@
-const daysGrid = document.getElementById('daysGrid');
-const monthYearDisplay = document.getElementById('monthYearDisplay');
-const prevBtn = document.getElementById('prevBtn');
-const nextBtn = document.getElementById('nextBtn');
-
-// Modal Elements
-const courseModal = document.getElementById('courseModal');
-const closeModalBtn = document.getElementById('closeModalBtn');
-const modalCategory = document.getElementById('modalCategory');
-const modalTitle = document.getElementById('modalTitle');
-const modalDateVal = document.getElementById('modalDateVal');
-const modalAssignmentVal = document.getElementById('modalAssignmentVal');
-const modalDueVal = document.getElementById('modalDueVal');
-const modalSlideLink = document.getElementById('modalSlideLink');
-
 let currentDate = new Date();
+let events = JSON.parse(localStorage.getItem('calendarEvents')) || [];
 
-// Structured Course Content Map
-const courseSchedule = {
-    "2026-07-29": {
-        type: "lecture",
-        title: "Introduction to Machine Learning",
-        slides: "https://example.com/slides1",
-        assignment: "Lab 0: Sandbox Setup",
-        due: "Aug 2 at 11:59 PM"
-    },
-    "2026-07-31": {
-        type: "lab",
-        title: "Lab 1: Data Preprocessing",
-        slides: "https://example.com/lab1-slides",
-        assignment: "HW 1: Feature Engineering",
-        due: "Aug 8 at 11:59 PM"
-    },
-    "2026-08-05": {
-        type: "exam",
-        title: "Midterm Exam 1",
-        slides: null,
-        assignment: "Prepare 1-page cheat sheet",
-        due: "In Class"
-    }
-};
+// DOM Elements
+const monthYearDisplay = document.getElementById('month-year-display');
+const calendarGrid = document.getElementById('calendar-grid');
+const prevBtn = document.getElementById('prev-btn');
+const nextBtn = document.getElementById('next-btn');
+const filterSelect = document.getElementById('category-filter');
 
-function renderCalendar() {
-    daysGrid.innerHTML = '';
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
+const eventModal = document.getElementById('event-modal');
+const openModalBtn = document.getElementById('open-modal-btn');
+const closeModalBtn = document.getElementById('close-modal-btn');
+const eventForm = document.getElementById('event-form');
 
-    monthYearDisplay.innerText = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+// Initialize
+renderCalendar();
 
-    const firstDayIndex = new Date(year, month, 1).getDay();
-    const lastDay = new Date(year, month + 1, 0).getDate();
-
-    for (let i = 0; i < firstDayIndex; i++) {
-        const emptyCell = document.createElement('div');
-        emptyCell.classList.add('empty-day');
-        daysGrid.appendChild(emptyCell);
-    }
-
-    for (let day = 1; day <= lastDay; day++) {
-        const dayCell = document.createElement('div');
-        dayCell.classList.add('calendar-day');
-        
-        const dayNumber = document.createElement('span');
-        dayNumber.classList.add('day-number');
-        dayNumber.innerText = day;
-        dayCell.appendChild(dayNumber);
-
-        const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        
-        if (courseSchedule[dateKey]) {
-            const eventData = courseSchedule[dateKey];
-            
-            const badge = document.createElement('div');
-            badge.classList.add('event-badge', `badge-${eventData.type}`);
-            badge.innerText = `${eventData.type.toUpperCase()}: ${eventData.title}`;
-            dayCell.appendChild(badge);
-
-            // Open Modal on click with correct details filled
-            dayCell.addEventListener('click', () => {
-                openModal(dateKey, eventData);
-            });
-        }
-
-        daysGrid.appendChild(dayCell);
-    }
-}
-
-// Open modal helper
-function openModal(dateString, data) {
-    const formattedDate = new Date(dateString).toLocaleDateString('default', { 
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
-    });
-
-    // Populate values
-    modalCategory.innerText = data.type;
-    modalCategory.className = `modal-category-badge badge-${data.type}`;
-    modalTitle.innerText = data.title;
-    modalDateVal.innerText = formattedDate;
-    modalAssignmentVal.innerText = data.assignment || "None";
-    modalDueVal.innerText = data.due || "N/A";
-
-    // Manage file slides download link
-    if (data.slides) {
-        modalSlideLink.href = data.slides;
-        modalSlideLink.style.display = "inline-flex";
-    } else {
-        modalSlideLink.style.display = "none";
-    }
-
-    courseModal.classList.remove('hidden');
-}
-
-// Close modal triggers
-closeModalBtn.addEventListener('click', () => {
-    courseModal.classList.add('hidden');
-});
-
-courseModal.addEventListener('click', (e) => {
-    if (e.target === courseModal) {
-        courseModal.classList.add('hidden');
-    }
-});
-
+// Event Listeners
 prevBtn.addEventListener('click', () => {
-    currentDate.setMonth(currentDate.getMonth() - 1);
-    renderCalendar();
+  currentDate.setMonth(currentDate.getMonth() - 1);
+  renderCalendar();
 });
 
 nextBtn.addEventListener('click', () => {
-    currentDate.setMonth(currentDate.getMonth() + 1);
-    renderCalendar();
+  currentDate.setMonth(currentDate.getMonth() + 1);
+  renderCalendar();
 });
 
-renderCalendar();
+filterSelect.addEventListener('change', renderCalendar);
+
+openModalBtn.addEventListener('click', () => eventModal.classList.remove('hidden'));
+closeModalBtn.addEventListener('click', () => eventModal.classList.add('hidden'));
+
+eventForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const title = document.getElementById('event-title').value;
+  const date = document.getElementById('event-date').value;
+  const category = document.getElementById('event-category').value;
+
+  const newEvent = { id: Date.now(), title, date, category };
+  events.push(newEvent);
+  
+  // Save to LocalStorage
+  localStorage.setItem('calendarEvents', JSON.stringify(events));
+
+  eventForm.reset();
+  eventModal.classList.add('hidden');
+  renderCalendar();
+});
+
+// Render Main Calendar Grid
+function renderCalendar() {
+  calendarGrid.innerHTML = '';
+  
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+
+  // Header display string
+  monthYearDisplay.textContent = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  const firstDayOfMonth = new Date(year, month, 1).getDay();
+  const lastDateOfMonth = new Date(year, month + 1, 0).getDate();
+  const activeFilter = filterSelect.value;
+
+  // Render Padding Days (Prev Month)
+  for (let i = 0; i < firstDayOfMonth; i++) {
+    const emptyCell = document.createElement('div');
+    emptyCell.classList.add('day-cell', 'inactive');
+    calendarGrid.appendChild(emptyCell);
+  }
+
+  // Render Current Month Days
+  for (let day = 1; day <= lastDateOfMonth; day++) {
+    const dayCell = document.createElement('div');
+    dayCell.classList.add('day-cell');
+
+    const dayNumber = document.createElement('div');
+    dayNumber.classList.add('day-number');
+    dayNumber.textContent = day;
+    dayCell.appendChild(dayNumber);
+
+    // Date String format: YYYY-MM-DD
+    const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+    // Filter events matching this date
+    const dayEvents = events.filter(evt => {
+      const matchDate = evt.date === dateString;
+      const matchCategory = activeFilter === 'all' || evt.category === activeFilter;
+      return matchDate && matchCategory;
+    });
+
+    dayEvents.forEach(evt => {
+      const chip = document.createElement('div');
+      chip.classList.add('event-chip', evt.category);
+      chip.textContent = evt.title;
+      
+      // Delete event on click
+      chip.addEventListener('click', (e) => {
+        e.stopPropagation();
+        events = events.filter(e => e.id !== evt.id);
+        localStorage.setItem('calendarEvents', JSON.stringify(events));
+        renderCalendar();
+      });
+
+      dayCell.appendChild(chip);
+    });
+
+    calendarGrid.appendChild(dayCell);
+  }
+}
