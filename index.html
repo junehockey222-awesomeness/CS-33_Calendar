@@ -19,5 +19,34 @@
         <div id="daysGrid" class="days-grid"></div>
     </div>
     <script src="app.js"></script>
+    <!-- Beautiful Interactive Modal Overlay -->
+    <div id="courseModal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <span id="modalCategory" class="modal-category-badge">Lecture</span>
+                <button id="closeModalBtn" class="close-icon-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <h2 id="modalTitle">Introduction to Algorithms</h2>
+                <div class="modal-detail-item">
+                    <span class="detail-label">📅 Date:</span>
+                    <span id="modalDateVal">Wednesday, July 29, 2026</span>
+                </div>
+                <div class="modal-detail-item">
+                    <span class="detail-label">📖 Assignment:</span>
+                    <span id="modalAssignmentVal">Lab 0: Sandbox Setup</span>
+                </div>
+                <div class="modal-detail-item">
+                    <span class="detail-label">⏳ Due:</span>
+                    <span id="modalDueVal">Aug 2 at 11:59 PM</span>
+                </div>
+                
+                <div class="modal-action-row">
+                    <a id="modalSlideLink" href="#" target="_blank" class="action-btn slide-btn">📥 Download Slides</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
