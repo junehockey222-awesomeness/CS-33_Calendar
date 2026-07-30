@@ -1,67 +1,1779 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Interactive Calendar</title>
-  <link rel="stylesheet" href="styles.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CS40 Calendar</title>
+    <link rel="icon" href="https://www.aviatorgear.com/images/product/large/39950.jpg" type="image/jpeg">
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CS40 Calendar">
+    
+    <style>
+        html { font-size: 14px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        body { background-color: #f4f4f9; padding: 20px; display: flex; flex-direction: column; align-items: center; overflow-x: hidden; width: 100%; min-height: 100vh; }
+        
+        /* TOP LAYOUT */
+        .top-container { position: relative; display: flex; justify-content: center; align-items: center; width: 100%; max-width: 1400px; margin-bottom: 30px; min-height: 110px; }
+        .main-header { display: flex; align-items: center; background-color: white; padding: 15px 30px; border-radius: 50px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); z-index: 10; position: relative; }
+        .header-logo { height: 5rem; width: auto; margin-right: 20px; cursor: pointer; }
+        .header-title { font-size: 2.5rem; color: #333; font-weight: bold; margin: 0; white-space: nowrap; }
+        
+        .header-actions-left { position: absolute; left: 0; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: flex-start; gap: 10px; z-index: 20; }
+        
+        .header-actions-right { 
+            position: absolute; right: 0; top: 50%; transform: translateY(-50%); 
+            display: flex; flex-direction: row; align-items: center; gap: 12px; z-index: 20; 
+            transition: opacity 0.3s;
+        }
+        .header-actions-right.hidden { opacity: 0; pointer-events: none; }
+
+        .action-buttons-stack { display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
+        
+        /* MOBILE SETTINGS ICON */
+        .mobile-settings-icon {
+            display: none; /* Hidden on Desktop */
+            background: transparent;
+            border: none;
+            font-size: 1.8rem;
+            cursor: pointer;
+            color: #555;
+            margin-left: 15px; /* Spacing from title */
+            padding: 5px;
+            line-height: 1;
+        }
+        
+        /* LEGEND */
+        .clean-mode-legend { 
+            position: absolute; right: 0; top: 50%; transform: translateY(-50%); 
+            display: none; background: white; padding: 15px 25px; border-radius: 20px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+            z-index: 30; /* Higher z-index to ensure it sits on top */
+            min-width: 200px;
+            flex-direction: row; gap: 25px; 
+        }
+        .clean-mode-legend.visible { display: flex; }
+        .legend-column { display: flex; flex-direction: column; gap: 8px; }
+        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: bold; color: #555; white-space: nowrap; }
+        .legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+        .legend-symbol { width: 12px; text-align: center; font-weight: bold; font-size: 1.2rem; line-height: 12px; color: #333; }
+
+        .header-btn { border: none; padding: 10px 20px; border-radius: 20px; font-weight: bold; cursor: pointer; font-size: 0.9rem; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: background 0.2s, transform 0.1s; white-space: nowrap; width: 160px; text-align: center; }
+        .header-btn:active { transform: scale(0.98); }
+        .week-view-btn { background-color: #003087; color: white; }
+        .week-view-btn:hover { background-color: #001e54; }
+        .legend-btn { background-color: #6c757d; color: white; }
+        .legend-btn:hover { background-color: #5a6268; }
+        
+        .add-event-btn-main { background-color: #003087; color: white; display: none; }
+        .add-event-btn-main:hover { background-color: #001e54; }
+        
+        /* SETTINGS BUTTON */
+        .settings-btn { background-color: #f0f0f0; color: #333; border: 1px solid #ccc; }
+        .settings-btn:hover { background-color: #e0e0e0; }
+        
+        .filter-btn { 
+            background-color: white; color: #333; border: 1px solid #ccc; 
+            width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.1); flex-shrink: 0;
+        }
+        .filter-btn:hover { background-color: #f0f0f0; }
+        .filter-btn svg { width: 20px; height: 20px; fill: #555; }
+        .filter-btn.active-filter { border-color: #003087; background-color: #eef4ff; }
+        .filter-btn.active-filter svg { fill: #003087; }
+
+        /* CALENDAR CONTAINER */
+        .calendar-container { 
+            width: 100%; max-width: 1400px; 
+            background: white; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+            border-radius: 8px; 
+            border-top: 2px solid black; 
+            border-left: 2px solid black; 
+        }
+
+        .calendar-header { 
+            display: flex; justify-content: space-between; align-items: center; padding: 20px; 
+            background-color: #003087; color: white; 
+            border-right: 2px solid black; border-bottom: 2px solid black;
+            position: sticky; top: 0; z-index: 101;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
+        }
+        .calendar-header.hidden { display: none; }
+        .nav-btn { background: none; border: 1px solid white; color: white; padding: 5px 15px; cursor: pointer; font-size: 1.2rem; border-radius: 4px; }
+        .nav-btn:hover { background: rgba(255,255,255,0.2); }
+
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); width: 100%; }
+        
+        .grid-header-cell { 
+            text-align: center; padding: 10px; background-color: #e0e0e0; font-weight: bold; 
+            border-right: 2px solid black; border-bottom: 2px solid black; color: #333; 
+            position: sticky; top: 72px; z-index: 90;
+            box-shadow: 0 2px 2px rgba(0,0,0,0.1);
+        }
+        
+        .day-cell { height: 240px; overflow: hidden; border-right: 2px solid black; border-bottom: 2px solid black; position: relative; display: flex; flex-direction: column; background-color: white; cursor: pointer; transition: background-color 0.1s; }
+        .day-cell:hover { background-color: #f0f8ff; }
+        .day-cell.week-view { height: auto !important; min-height: 500px; }
+        .day-cell.inactive { background-color: #eee; cursor: default; }
+
+        .date-number { position: absolute; top: 5px; left: 8px; font-weight: bold; font-size: 1.1rem; color: #333; z-index: 2; pointer-events: none; }
+        .date-number.current-day { color: #ff0000 !important; font-size: 1.2rem; }
+        .day-type { position: absolute; top: 5px; width: 100%; text-align: center; font-weight: bold; font-size: 0.95rem; color: #003087; z-index: 2; pointer-events: none; }
+        .weekend-label { position: absolute; top: 22px; width: 100%; text-align: center; font-size: 0.8rem; font-weight: bold; color: #666; z-index: 1; pointer-events: none; }
+
+        .day-content { flex: 1; display: flex; flex-direction: column; padding-top: 35px; height: 100%; }
+        .day-section { flex: 1; border-bottom: 1px dotted #999; width: 100%; font-size: 0.75rem; padding: 3px 2px; overflow: hidden; position: relative; }
+        .day-cell.week-view .day-section { height: auto; flex: 1 0 auto; min-height: 80px; }
+        .day-section:last-child { border-bottom: none; }
+        .day-section::after { content: attr(data-label); position: absolute; bottom: 2px; right: 4px; font-size: 0.65rem; color: #999; pointer-events: none; opacity: 0.7; font-weight: bold; text-transform: uppercase; }
+
+        .event-chip { display: block; color: white; padding: 2px 4px; border-radius: 3px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.75rem; pointer-events: none; z-index: 5; position: relative; text-shadow: 0 1px 2px rgba(0,0,0,0.4); }
+        .day-cell.week-view .event-chip { font-size: 0.9rem; padding: 6px 8px; white-space: normal; line-height: 1.3; margin-bottom: 4px; display: flex; flex-direction: column; }
+        .more-events-indicator { font-size: 1.2rem; line-height: 0.5; color: #333; text-align: center; font-weight: bold; padding-bottom: 2px; }
+
+        /* INSTALL APP BUTTON */
+        .install-container {
+            width: 100%; max-width: 400px; display: none; justify-content: center; margin-bottom: 20px;
+        }
+        .install-btn-main {
+            background-color: #28a745; color: white; border: none; padding: 12px 25px; 
+            border-radius: 25px; font-weight: bold; font-size: 1rem; cursor: pointer; 
+            box-shadow: 0 3px 6px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 8px;
+            transition: transform 0.1s, background-color 0.2s;
+        }
+        .install-btn-main:active { transform: scale(0.98); background-color: #218838; }
+
+        /* MOBILE DAY VIEW OVERRIDES */
+        @media (max-width: 768px) {
+            .calendar-grid { grid-template-columns: 1fr; } 
+            .grid-header-cell { display: none; } 
+            .calendar-container { border-right: 2px solid black; } 
+            
+            /* HIDE BUTTONS ON MOBILE */
+            .header-actions-left, .header-actions-right { display: none !important; }
+            
+            /* SHOW MOBILE SETTINGS ICON */
+            .mobile-settings-icon { display: block; }
+            
+            /* HIDE ADMIN SETTINGS BUTTON ON MOBILE */
+            #adminLoginBtn { display: none !important; }
+
+            /* Smaller Title on Mobile */
+            .header-title { font-size: 1.5rem; } 
+            .header-logo { height: 3rem; }
+        }
+
+        /* MODALS */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1001; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 25px; border-radius: 8px; width: 550px; max-width: 90%; box-shadow: 0 4px 15px rgba(0,0,0,0.2); position: relative; max-height: 85vh; overflow-y: auto; }
+        .close-modal-btn { position: absolute; top: 10px; right: 15px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666; z-index: 10; }
+        .modal-title { margin-bottom: 20px; font-size: 1.5rem; color: #333; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
+        .form-control { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        .time-inputs { display: flex; gap: 10px; }
+        .time-inputs input { flex: 1; }
+        .checkbox-group { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
+        .checkbox-group label { font-weight: normal; display: flex; align-items: center; gap: 5px; cursor: pointer; }
+        
+        /* RECURRENCE STYLES */
+        .recurrence-options {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+            margin-top: 10px;
+            display: none;
+        }
+        .recurrence-options.active { display: block; }
+        .recurrence-days-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .day-select-label {
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+        }
+        
+        /* SCROLLABLE DESIGNATOR LIST IN FILTER */
+        .designator-list { display: flex; flex-wrap: wrap; gap: 10px; max-height: 150px; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 4px; }
+        .designator-list label { width: 45%; font-size: 0.9rem; }
+
+        .modal-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+        .modal-actions { display: flex; gap: 10px; }
+        
+        .footer-toggles { display: flex; gap: 15px; align-items: center; }
+        .footer-toggle-label { display: flex; align-items: center; gap: 6px; font-weight: bold; cursor: pointer; font-size: 0.95rem; }
+        
+        .btn-cancel { background: #ccc; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+        .btn-save { background: #003087; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+        .btn-select-all { background: #003087; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+        .btn-danger { background: #d9534f; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+
+        /* FILTER MODAL SPECIFIC */
+        #filterModal .modal-content { width: 450px; }
+        #filterModal .modal-footer { margin-top: 30px; display: flex; justify-content: space-between; }
+        .filter-left-actions { display: flex; gap: 10px; } 
+        .filter-section { margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+        .filter-section:last-child { border-bottom: none; }
+        .filter-section h4 { margin: 0 0 10px 0; color: #003087; }
+        
+        /* SETTINGS MODAL SPECIFIC */
+        #settingsModal .modal-content { max-width: 400px; text-align: center; }
+        .settings-btn-toggle {
+            width: 100%;
+            padding: 12px;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        .settings-btn-toggle.inactive { background-color: #f0f0f0; color: #333; }
+        .settings-btn-toggle.active { background-color: #d9534f; color: white; border: none; }
+
+        .admin-controls-container {
+            display: none;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+        }
+        .admin-controls-container.visible { display: block; }
+        
+        /* EVENT LIST MODAL SPECIFIC */
+        #eventsListModal .modal-content { width: 600px; max-height: 90vh; display: flex; flex-direction: column; }
+        #eventsListResults { flex: 1; overflow-y: auto; margin-top: 15px; border-top: 1px solid #ddd; }
+        
+        .event-list-item { 
+            border-bottom: 1px solid #eee; 
+            padding: 12px 10px; 
+            cursor: pointer; 
+            transition: background 0.1s; 
+        }
+        .event-list-item:hover { background-color: #f9f9f9; }
+        .event-list-header { display: flex; justify-content: space-between; align-items: center; }
+        .event-list-date { font-weight: bold; color: #003087; width: 120px; flex-shrink: 0; }
+        .event-list-name { font-weight: bold; color: #333; flex: 1; }
+        .event-list-designator { font-size: 0.8rem; background: #eee; padding: 2px 6px; border-radius: 4px; color: #666; margin-left: 10px; }
+        
+        .event-list-details { 
+            display: none; 
+            margin-top: 10px; 
+            background: #f4f4f9; 
+            padding: 10px; 
+            border-left: 4px solid #003087; 
+            border-radius: 4px; 
+        }
+        .event-list-item.expanded .event-list-details { display: block; }
+        .event-list-item.expanded { background-color: #f0f8ff; }
+
+        /* DAY DETAIL */
+        .day-view-header { border-bottom: 2px solid #003087; padding-bottom: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-start; }
+        .header-text-group { display: flex; flex-direction: column; }
+        .day-view-date { font-size: 1.8rem; font-weight: bold; color: #333; }
+        .day-view-type { font-size: 1.2rem; color: #003087; font-weight: bold; margin-top: 5px; }
+        .day-view-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+        .day-view-item { background: #f4f4f9; padding: 15px; border-left: 4px solid #003087; border-radius: 4px; display: flex; gap: 20px; }
+        .day-view-info { flex: 1; }
+        .day-view-notes { flex: 1; border-left: 1px solid #ddd; padding-left: 15px; color: #555; font-size: 0.9rem; white-space: pre-wrap; }
+        .day-view-notes strong { display: block; margin-bottom: 5px; color: #333; }
+        .day-view-item h4 { margin: 0 0 5px 0; font-size: 1.2rem; color: #003087; }
+        .day-view-item p { margin: 0 0 3px 0; font-size: 0.9rem; color: #666; }
+        .action-btn-sm { border: none; padding: 8px 12px; font-size: 0.85rem; border-radius: 4px; cursor: pointer; margin-top: 10px; display: none; margin-right: 5px; }
+        .edit-btn { background-color: #f0ad4e; color: white; }
+        .delete-btn { background-color: #ff4d4f; color: white; }
+        .delete-series-btn { background-color: #a94442; color: white; }
+
+        /* EDIT CONTROLS */
+        .day-view-edit-controls { display: none; flex-direction: column; gap: 5px; align-items: flex-start; margin-right: 35px; }
+        #standardControls { display: flex; flex-direction: column; gap: 5px; align-items: flex-start; }
+        .toggle-item { font-weight: bold; color: #333; display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.95rem; }
+        .label-ssoc { color: #003087; }
+        .label-noschool { color: #d9534f; }
+        .label-snow { color: #5bc0de; }
+        .toggle-item input { transform: scale(1.2); cursor: pointer; }
+        .day-view-add-btn-rect { background-color: #003087; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 0.9rem; font-weight: bold; cursor: pointer; margin-bottom: 10px; width: 100%; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: background 0.2s; }
+        .day-view-add-btn-rect:hover { background-color: #001e54; }
+        
+        .force-hide { display: none !important; }
+        .force-show-flex { display: flex !important; }
+    </style>
 </head>
 <body>
 
-  <header class="calendar-header">
-    <div class="nav-controls">
-      <button id="prev-btn">&lt; Prev</button>
-      <h2 id="month-year-display">Month Year</h2>
-      <button id="next-btn">Next &gt;</button>
-    </div>
-    <div class="filter-controls">
-      <label for="category-filter">Filter:</label>
-      <select id="category-filter">
-        <option value="all">All Events</option>
-        <option value="Training">Training</option>
-        <option value="Fitness">Fitness</option>
-        <option value="Social">Social</option>
-        <option value="Other">Other</option>
-      </select>
-      <button id="open-modal-btn">+ Add Event</button>
-    </div>
-  </header>
-
-  <!-- Calendar Days Header -->
-  <div class="weekdays-grid">
-    <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
-  </div>
-
-  <!-- Calendar Days Container -->
-  <div id="calendar-grid" class="calendar-grid"></div>
-
-  <!-- Add Event Modal -->
-  <div id="event-modal" class="modal-overlay hidden">
-    <div class="modal-content">
-      <h3>Add New Event</h3>
-      <form id="event-form">
-        <label>Title:
-          <input type="text" id="event-title" required placeholder="Event name...">
-        </label>
-        <label>Date:
-          <input type="date" id="event-date" required>
-        </label>
-        <label>Category:
-          <select id="event-category">
-            <option value="Training">Training</option>
-            <option value="Fitness">Fitness</option>
-            <option value="Social">Social</option>
-            <option value="Other">Other</option>
-          </select>
-        </label>
-        <div class="modal-actions">
-          <button type="button" id="close-modal-btn">Cancel</button>
-          <button type="submit">Save Event</button>
+    <div id="pinModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 300px;">
+            <h3 class="modal-title">Enter Admin PIN</h3>
+            <div class="form-group">
+                <input type="password" id="pinInput" class="form-control" placeholder="PIN Code">
+            </div>
+            <div class="modal-actions">
+                <button id="cancelPinBtn" class="btn-cancel">Cancel</button>
+                <button id="submitPinBtn" class="btn-save">Unlock</button>
+            </div>
         </div>
-      </form>
     </div>
-  </div>
+    
+    <div id="settingsModal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="close-modal-btn" id="closeSettingsBtn">&times;</button>
+            <h3 class="modal-title">Menu</h3>
+            
+            <button id="openEventListBtn" class="settings-btn-toggle inactive" style="background-color: #003087; color: white; border: none;">See Events List</button>
+            <button id="publicExportBtn" class="settings-btn-toggle inactive" style="background-color: #28a745; color: white; border: none;">Export Calendar</button>
+            <button id="adminLoginBtn" class="settings-btn-toggle inactive" style="background-color: #6c757d; color: white; border: none;">Admin Settings</button>
+            
+            <div id="adminControlsContainer" class="admin-controls-container">
+                <h4 style="margin-bottom:15px; color:#d9534f; text-transform:uppercase; font-size:0.9rem;">Admin Controls</h4>
+                <button id="toggleEditModeBtn" class="settings-btn-toggle inactive">Enter Edit Mode</button>
+                <button id="setSemesterBtn" class="settings-btn-toggle inactive" style="background-color: #17a2b8; color: white; border: none;">Set Semester Start / End</button>
+                <button id="exportDataBtn" class="settings-btn-toggle inactive" style="background-color: #6610f2; color: white; border: none;">Export All Data (Backup)</button>
+                <button id="cleanupDataBtn" class="settings-btn-toggle inactive" style="background-color: #dc3545; color: white; border: none;">Data Cleanup</button>
+                <button id="changePinBtn" class="settings-btn-toggle inactive" style="background-color: #343a40; color: white; border: none;">Change PIN</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="publicExportModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 450px;">
+            <button class="close-modal-btn" id="closePublicExportBtn">&times;</button>
+            <h3 class="modal-title">Export Calendar</h3>
+            <p style="color:#666; margin-bottom:15px; font-size:0.9rem;">Select event types to include in your download.</p>
+            
+            <div class="filter-section" style="border-bottom:1px solid #eee; padding-bottom:15px; margin-bottom:15px;">
+                <h4 style="color:#003087; margin-bottom:10px;">Select Events:</h4>
+                <div class="designator-list">
+                    <label><input type="checkbox" value="Birthday" class="export-filter-check" checked> Birthday</label>
+                    <label><input type="checkbox" value="Briefing" class="export-filter-check" checked> Briefing</label>
+                    <label><input type="checkbox" value="Checkpoint" class="export-filter-check" checked> Checkpoint</label>
+                    <label><input type="checkbox" value="Fitness Test" class="export-filter-check" checked> Fitness Test</label>
+                    <label><input type="checkbox" value="Formation" class="export-filter-check" checked> Formation</label>
+                    <label><input type="checkbox" value="Holiday" class="export-filter-check" checked> Holiday</label>
+                    <label><input type="checkbox" value="IC Competition" class="export-filter-check" checked> IC Competition</label>
+                    <label><input type="checkbox" value="Morale Event" class="export-filter-check" checked> Morale Event</label>
+                    <label><input type="checkbox" value="Squadron Time" class="export-filter-check" checked> Squadron Time</label>
+                    <label><input type="checkbox" value="Tasker" class="export-filter-check" checked> Tasker</label>
+                    <label><input type="checkbox" value="Training" class="export-filter-check" checked> Training</label>
+                    <label><input type="checkbox" value="Other" class="export-filter-check" checked> Other</label>
+                </div>
+            </div>
+            
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <button id="exportAppleBtn" class="settings-btn-toggle" style="background-color: #333; color: white; border: none; margin-bottom:0;">
+                    Download for Apple
+                </button>
+                <button id="exportGoogleBtn" class="settings-btn-toggle" style="background-color: #4285F4; color: white; border: none; margin-bottom:0;">
+                    Download for Google / Outlook
+                </button>
+            </div>
+        </div>
+    </div>
 
-  <script src="app.js"></script>
+    <div id="changePinModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 400px;">
+            <h3 class="modal-title">Change Security PIN</h3>
+            <div class="form-group">
+                <label>Current PIN</label>
+                <input type="password" id="currentPinInput" class="form-control" placeholder="Enter current PIN">
+            </div>
+            <div class="form-group">
+                <label>New PIN</label>
+                <input type="password" id="newPinInput" class="form-control" placeholder="Enter new PIN">
+            </div>
+            <div class="form-group">
+                <label>Verify New PIN</label>
+                <input type="password" id="verifyPinInput" class="form-control" placeholder="Re-enter new PIN">
+            </div>
+            <div class="modal-actions">
+                <button id="cancelChangePinBtn" class="btn-cancel">Cancel</button>
+                <button id="saveNewPinBtn" class="btn-save">Update PIN</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="cleanupModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 450px;">
+            <h3 class="modal-title" style="color: #d9534f;">Data Cleanup</h3>
+            <p style="margin-bottom: 15px; color: #555;">Select a timeframe to delete old events. This action cannot be undone.</p>
+            
+            <div class="form-group">
+                <label>Delete events older than:</label>
+                <select id="cleanupTimeframe" class="form-control">
+                    <option value="3">3 Months</option>
+                    <option value="6">6 Months</option>
+                    <option value="12">1 Year</option>
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
+                <label style="color: #d9534f;">Security Verification</label>
+                <input type="password" id="cleanupPinInput" class="form-control" placeholder="Enter PIN to confirm deletion">
+            </div>
+
+            <div class="modal-actions">
+                <button id="cancelCleanupBtn" class="btn-cancel">Cancel</button>
+                <button id="executeCleanupBtn" class="btn-danger">Delete Old Data</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="semesterModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 400px;">
+            <h3 class="modal-title">Set Semester Dates</h3>
+            <div class="form-group">
+                <label>Semester Start Date (M1)</label>
+                <input type="date" id="semesterStart" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>Semester End Date</label>
+                <input type="date" id="semesterEnd" class="form-control">
+            </div>
+            <div class="modal-actions">
+                <button id="cancelSemesterBtn" class="btn-cancel">Cancel</button>
+                <button id="saveSemesterBtn" class="btn-save">Save Dates</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="eventsListModal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="close-modal-btn" id="closeEventsListBtn">&times;</button>
+            <h3 class="modal-title">Events List</h3>
+            
+            <div class="filter-section" style="border-bottom: 1px solid #ddd; padding-bottom: 15px;">
+                <h4 style="margin-bottom: 8px;">Select Event Types to View:</h4>
+                <div class="designator-list">
+                    <label><input type="checkbox" value="Birthday" class="list-filter-check"> Birthday</label>
+                    <label><input type="checkbox" value="Briefing" class="list-filter-check"> Briefing</label>
+                    <label><input type="checkbox" value="Checkpoint" class="list-filter-check"> Checkpoint</label>
+                    <label><input type="checkbox" value="Fitness Test" class="list-filter-check"> Fitness Test</label>
+                    <label><input type="checkbox" value="Formation" class="list-filter-check"> Formation</label>
+                    <label><input type="checkbox" value="Holiday" class="list-filter-check"> Holiday</label>
+                    <label><input type="checkbox" value="IC Competition" class="list-filter-check"> IC Competition</label>
+                    <label><input type="checkbox" value="Morale Event" class="list-filter-check"> Morale Event</label>
+                    <label><input type="checkbox" value="Squadron Time" class="list-filter-check"> Squadron Time</label>
+                    <label><input type="checkbox" value="Tasker" class="list-filter-check"> Tasker</label>
+                    <label><input type="checkbox" value="Training" class="list-filter-check"> Training</label>
+                    <label><input type="checkbox" value="Other" class="list-filter-check"> Other</label>
+                </div>
+                <button id="generateListBtn" class="btn-save" style="width: 100%; margin-top: 10px;">Show Events</button>
+            </div>
+
+            <div id="eventsListResults">
+                <p style="text-align:center; color:#777; margin-top:20px;">Select types and click "Show Events" to view list.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="top-container">
+        <div class="header-actions-left" id="headerActionsLeft">
+            <button id="weekViewBtn" class="header-btn week-view-btn">See Monthly View</button>
+            <button id="viewLegendBtn" class="header-btn legend-btn" style="margin-top: 10px;">View Legend</button>
+        </div>
+        <div class="main-header">
+            <img src="https://www.aviatorgear.com/images/product/large/39950.jpg" alt="CS40 Logo" class="header-logo" id="mainHeaderLogo" title="Double Click to Toggle Clean Mode">
+            <h1 class="header-title" id="mainHeaderTitle">CS40 Calendar</h1>
+            <button id="mobileSettingsBtn" class="mobile-settings-icon">⚙️</button>
+        </div>
+        <div class="header-actions-right" id="headerActionsRight">
+            <button id="filterBtn" class="filter-btn" title="Filter Events">
+                <svg viewBox="0 0 24 24"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>
+            </button>
+            
+            <div class="action-buttons-stack">
+                <button id="settingsBtn" class="header-btn settings-btn">Settings</button>
+                <button id="addEventBtn" class="header-btn add-event-btn-main">+ Add Event</button>
+            </div>
+        </div>
+        
+        <div class="clean-mode-legend" id="cleanModeLegend">
+            <div class="legend-column">
+                <div class="legend-item"><div class="legend-dot" style="background: #d9534f;"></div> 26ers</div>
+                <div class="legend-item"><div class="legend-dot" style="background: #FFD700;"></div> 27ers</div>
+                <div class="legend-item"><div class="legend-dot" style="background: #003087;"></div> 28ers</div>
+            </div>
+            <div class="legend-column">
+                <div class="legend-item"><div class="legend-dot" style="background: #C0C0C0;"></div> 29ers</div>
+                <div class="legend-item"><div class="legend-dot" style="background: black;"></div> All</div>
+                <div class="legend-item"><div class="legend-dot" style="background: #fd7e14;"></div> Non-Mandatory</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="installContainer" class="install-container">
+        <button id="installAppBtn" class="install-btn-main">
+            📲 Install App
+        </button>
+    </div>
+
+    <div class="calendar-container">
+        <header class="calendar-header" id="calendarNavHeader">
+            <button id="prevBtn" class="nav-btn">&lt;</button> <h2 id="monthYear">Month Year</h2> <button id="nextBtn" class="nav-btn">&gt;</button>
+        </header>
+        <div class="calendar-grid" id="calendarGrid"></div>
+    </div>
+
+    <div id="filterModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="modal-title">Filter Events</h3>
+            <div class="filter-section"><h4>By Class</h4><div class="checkbox-group"><label><input type="checkbox" value="26" class="filter-class-check"> 26</label><label><input type="checkbox" value="27" class="filter-class-check"> 27</label><label><input type="checkbox" value="28" class="filter-class-check"> 28</label><label><input type="checkbox" value="29" class="filter-class-check"> 29</label></div></div>
+            <div class="filter-section"><h4>By Event Type</h4><div class="designator-list"><label><input type="checkbox" value="Birthday" class="filter-designator-check"> Birthday</label><label><input type="checkbox" value="Briefing" class="filter-designator-check"> Briefing</label><label><input type="checkbox" value="Checkpoint" class="filter-designator-check"> Checkpoint</label><label><input type="checkbox" value="Fitness Test" class="filter-designator-check"> Fitness Test</label><label><input type="checkbox" value="Formation" class="filter-designator-check"> Formation</label><label><input type="checkbox" value="Holiday" class="filter-designator-check"> Holiday</label><label><input type="checkbox" value="IC Competition" class="filter-designator-check"> IC Competition</label><label><input type="checkbox" value="Morale Event" class="filter-designator-check"> Morale Event</label><label><input type="checkbox" value="Squadron Time" class="filter-designator-check"> Squadron Time</label><label><input type="checkbox" value="Tasker" class="filter-designator-check"> Tasker</label><label><input type="checkbox" value="Training" class="filter-designator-check"> Training</label><label><input type="checkbox" value="Other" class="filter-designator-check"> Other</label></div></div>
+            <div class="filter-section"><h4>Status</h4><div class="checkbox-group"><label><input type="checkbox" id="filterMandatoryCheck"> Mandatory Only</label></div></div>
+            <div class="modal-footer"><div class="filter-left-actions"><button id="clearFiltersBtn" class="btn-cancel" style="background: #d9534f; color: white;">Clear All</button><button id="selectAllFiltersBtn" class="btn-select-all">Select All</button></div><button id="closeFilterBtn" class="btn-save">Close</button></div>
+        </div>
+    </div>
+
+    <div id="eventModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="modal-title" id="modalTitle">Add Event</h3>
+            <div class="form-group"><label>Date</label><input type="date" id="eventDate" class="form-control"></div>
+            <div class="form-group"><label>Event Name</label><input type="text" id="eventName" class="form-control" placeholder="e.g. Current Event Briefs"></div>
+            <div class="form-group"><label>Event Type</label><select id="eventDesignator" class="form-control"><option value="Birthday">Birthday</option><option value="Briefing">Briefing</option><option value="Checkpoint">Checkpoint</option><option value="Fitness Test">Fitness Test</option><option value="Formation">Formation</option><option value="Holiday">Holiday</option><option value="IC Competition">IC Competition</option><option value="Morale Event">Morale Event</option><option value="Squadron Time">Squadron Time</option><option value="Tasker">Tasker</option><option value="Training">Training</option><option value="Other">Other</option></select></div>
+            <div class="form-group" id="locationGroup"><label>Location (Optional)</label><input type="text" id="eventLocation" class="form-control" placeholder="e.g. SAR"></div>
+            <div class="form-group" id="periodGroup"><label>Period</label><select id="eventPeriod" class="form-control"><option value="preflight">Preflight</option><option value="morning">Morning Period</option><option value="m5" id="opt-m5">M4.5</option><option value="other">Other</option></select></div>
+            <div class="form-group" id="customTimeCheckContainer"><label style="font-weight: normal; cursor:pointer;"><input type="checkbox" id="customTimeCheck"> Enable Custom Time</label></div>
+            <div class="form-group" id="timeframeGroup" style="display:none;"><label>Timeframe</label><div class="time-inputs"><input type="time" id="startTime" class="form-control"><span style="align-self:center;">to</span><input type="time" id="endTime" class="form-control"></div></div>
+            <div class="form-group" style="margin-top: 15px;" id="recurrenceContainer"><label style="font-weight: normal; cursor: pointer; color: #003087;"><input type="checkbox" id="recurrenceCheck"> Repeat Event (Recurring)</label><div id="recurrenceOptions" class="recurrence-options"><div class="form-group"><label>Frequency</label><select id="recurrenceFreq" class="form-control"><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="yearly">Yearly</option></select></div><div class="form-group" id="recurrenceDaysGroup" style="display: none;"><label>Repeat On</label><div class="recurrence-days-grid"><label class="day-select-label"><input type="checkbox" value="0" class="recur-day-check"> Sun</label><label class="day-select-label"><input type="checkbox" value="1" class="recur-day-check"> Mon</label><label class="day-select-label"><input type="checkbox" value="2" class="recur-day-check"> Tue</label><label class="day-select-label"><input type="checkbox" value="3" class="recur-day-check"> Wed</label><label class="day-select-label"><input type="checkbox" value="4" class="recur-day-check"> Thu</label><label class="day-select-label"><input type="checkbox" value="5" class="recur-day-check"> Fri</label><label class="day-select-label"><input type="checkbox" value="6" class="recur-day-check"> Sat</label></div></div><div class="form-group"><label>End Date (Required)</label><input type="date" id="recurrenceEndDate" class="form-control"></div></div></div>
+            <div class="form-group" id="classGroup"><label id="classLabel">Class Attendance</label><div class="checkbox-group" id="classCheckboxGroup"><label class="checkbox-all" id="classAllLabel"><input type="checkbox" id="allClassesCheck"> All</label><label><input type="checkbox" value="26" class="class-check"> 26</label><label><input type="checkbox" value="27" class="class-check"> 27</label><label><input type="checkbox" value="28" class="class-check"> 28</label><label><input type="checkbox" value="29" class="class-check"> 29</label></div><select id="birthdayClassSelect" class="form-control" style="display:none;"><option value="" disabled selected>Select Class Year</option><option value="26">26</option><option value="27">27</option><option value="28">28</option><option value="29">29</option></select></div>
+            <div class="form-group"><label>Notes</label><textarea id="eventNotes" class="form-control" placeholder="Optional details..."></textarea></div>
+            <div class="modal-footer"><div class="footer-toggles" id="footerToggles"><label class="footer-toggle-label" style="color: #555;"><input type="checkbox" id="tentativeCheck"> Tentative</label><label class="footer-toggle-label" style="color: #d9534f;"><input type="checkbox" id="mandatoryCheck" checked> Mandatory</label></div><div class="modal-actions" style="margin-top: 0;"><button id="cancelBtn" class="btn-cancel">Cancel</button><button id="saveEventBtn" class="btn-save">Save</button></div></div>
+        </div>
+    </div>
+
+    <div id="dayViewModal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="close-modal-btn" id="closeDayView">&times;</button>
+            <div class="day-view-header">
+                <div class="header-text-group"><div class="day-view-date" id="dayViewDateDisplay">Date</div><div class="day-view-type" id="dayViewTypeDisplay">M1</div></div>
+                <div class="day-view-edit-controls" id="dayViewEditControls">
+                    <button id="dayViewAddBtn" class="day-view-add-btn-rect">+ Add Event</button>
+                    <div id="standardControls">
+                        <label class="toggle-item label-ssoc"><input type="checkbox" id="ssocCheck"> SSoC</label>
+                        <label class="toggle-item label-noschool"><input type="checkbox" id="noSchoolCheck"> No School</label>
+                        <label class="toggle-item label-snow" id="snowDayLabel" style="display:none; margin-left:15px;"><input type="checkbox" id="snowDayCheck"> Snow Day</label>
+                    </div>
+                    <div id="saturdayControls" style="display:none;">
+                        <label class="toggle-item" style="color: #666;"><input type="checkbox" id="silverCheck"> Silver Saturday</label>
+                    </div>
+                </div>
+            </div>
+            <div id="dayViewList" class="day-view-list"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, addDoc, doc, deleteDoc, updateDoc, getDoc, setDoc, writeBatch, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // --- PASTE YOUR FIREBASE CONFIG HERE ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCyoUxG8Qfc6g5kwgqRK0Q2J0k1tXtQeVs",
+            authDomain: "cs40-calendar.firebaseapp.com",
+            projectId: "cs40-calendar",
+            storageBucket: "cs40-calendar.firebasestorage.app",
+            messagingSenderId: "661443751516",
+            appId: "1:661443751516:web:ddee708ab5a1014cadc099"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Global Variables
+        let currentDate = new Date();
+        let events = [];
+        let noSchoolDays = []; 
+        let silverDays = [];
+        let semesterSettings = { start: null, end: null };
+        let generatedSchedule = {}; 
+        
+        let currentPin = null; // No longer hardcoded.
+
+        let isEditMode = false;
+        let isSettingsUnlocked = false; 
+        let currentDayViewKey = null; 
+        let currentView = 'week'; 
+        let editingEventId = null;
+        let deferredPrompt; // For PWA install
+        
+        const filterState = { 
+            classes: [], 
+            designators: [],
+            mandatoryOnly: false 
+        };
+
+        // --- DOM Elements ---
+        const els = {};
+        ['monthYear','calendarGrid','prevBtn','nextBtn','weekViewBtn','mainHeaderTitle','mainHeaderLogo',
+         'headerActionsLeft','headerActionsRight','calendarNavHeader','cleanModeLegend','addEventBtn','settingsBtn',
+         'eventModal','modalTitle','cancelBtn','saveEventBtn','eventDate','eventName','eventLocation',
+         'eventPeriod','eventNotes','opt-m5','periodGroup','timeframeGroup','startTime','endTime',
+         'customTimeCheck','customTimeCheckContainer','allClassesCheck','dayViewModal','closeDayView',
+         'dayViewDateDisplay','dayViewTypeDisplay','dayViewList','dayViewAddBtn','dayViewEditControls',
+         'ssocCheck','noSchoolCheck', 'snowDayCheck', 'snowDayLabel', 'pinModal', 'pinInput', 'cancelPinBtn', 'submitPinBtn',
+         'mandatoryCheck', 'tentativeCheck', 'standardControls', 'saturdayControls', 'silverCheck',
+         'filterBtn', 'filterModal', 'filterMandatoryCheck', 'clearFiltersBtn', 'closeFilterBtn', 'selectAllFiltersBtn',
+         'viewLegendBtn', 'eventDesignator',
+         'recurrenceCheck', 'recurrenceOptions', 'recurrenceFreq', 'recurrenceDaysGroup', 'recurrenceEndDate',
+         'locationGroup', 'classGroup', 'footerToggles', 'recurrenceContainer', 'classAllLabel', 'classLabel',
+         'classCheckboxGroup', 'birthdayClassSelect',
+         'settingsModal', 'closeSettingsBtn', 'toggleEditModeBtn', 'openEventListBtn', 'setSemesterBtn', 'adminLoginBtn', 'adminControlsContainer', 'publicExportBtn',
+         'eventsListModal', 'closeEventsListBtn', 'generateListBtn', 'eventsListResults',
+         'semesterModal', 'semesterStart', 'semesterEnd', 'cancelSemesterBtn', 'saveSemesterBtn',
+         'changePinBtn', 'exportDataBtn', 'cleanupDataBtn',
+         'changePinModal', 'currentPinInput', 'newPinInput', 'verifyPinInput', 'cancelChangePinBtn', 'saveNewPinBtn',
+         'cleanupModal', 'cleanupTimeframe', 'cleanupPinInput', 'cancelCleanupBtn', 'executeCleanupBtn',
+         'installContainer', 'installAppBtn',
+         'publicExportModal', 'closePublicExportBtn', 'exportAppleBtn', 'exportGoogleBtn',
+         'mobileSettingsBtn'
+        ].forEach(id => els[id] = document.getElementById(id));
+        
+        const classChecks = document.querySelectorAll('.class-check');
+        const filterClassChecks = document.querySelectorAll('.filter-class-check');
+        const filterDesignatorChecks = document.querySelectorAll('.filter-designator-check');
+        const listFilterChecks = document.querySelectorAll('.list-filter-check');
+        const recurDayChecks = document.querySelectorAll('.recur-day-check');
+        const exportFilterChecks = document.querySelectorAll('.export-filter-check');
+
+        // --- PWA INSTALLATION LOGIC ---
+        
+        // Detect if the app is already running in standalone mode (installed)
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+        // Detect if device is iOS
+        const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+        // 1. Register Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then((reg) => console.log('Service Worker Registered'))
+                    .catch((err) => console.log('Service Worker Error', err));
+            });
+        }
+
+        // 2. Handle Android/Chrome (Automatic Prompt)
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            // Show button if on mobile and not already installed
+            if (window.innerWidth <= 768 && !isStandalone) {
+                els.installContainer.style.display = 'flex';
+                els.installAppBtn.innerText = "Install App";
+            }
+        });
+
+        // 3. Handle iOS (Manual Instructions)
+        if (isIos && !isStandalone && window.innerWidth <= 768) {
+            // Show button immediately for iOS since the event above won't fire
+            els.installContainer.style.display = 'flex';
+            els.installAppBtn.innerText = "Install on iPhone";
+        }
+
+        // 4. Handle Button Click
+        els.installAppBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                // Android/Chrome Path
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                deferredPrompt = null;
+                els.installContainer.style.display = 'none';
+            } else if (isIos) {
+                // iOS Path - Show instructions
+                alert("To install on iPhone:\n\n1. In Teams: tap the three dots at the top right of this screen and tap 'Open in browser'\n2. Tap the the three dots and then the share button (square with arrow) at the bottom of Safari.\n3. Scroll down and tap 'Add to Home Screen'.");
+            }
+        });
+
+        // 5. Handle resize
+        window.addEventListener('resize', () => {
+            if (isStandalone) return; // Don't show if already installed
+
+            // Show if we have a prompt waiting OR if it's iOS
+            if ((deferredPrompt || isIos) && window.innerWidth <= 768) {
+                els.installContainer.style.display = 'flex';
+            } else {
+                els.installContainer.style.display = 'none';
+            }
+            updateViewBasedOnScreen();
+        });
+
+
+        // --- FIREBASE DATA ---
+        async function loadData() {
+            try {
+                try {
+                    const pinDoc = await getDoc(doc(db, "settings", "security"));
+                    if (pinDoc.exists()) { 
+                        currentPin = pinDoc.data().pin; 
+                    } else {
+                        console.log("No security PIN set in database. Admin locked.");
+                    }
+                } catch(e) { console.log("Pin fetch check: ", e); }
+
+                const eventsSnapshot = await getDocs(collection(db, "events"));
+                events = [];
+                eventsSnapshot.forEach((doc) => events.push({ ...doc.data(), id: doc.id }));
+
+                const noSchoolSnapshot = await getDocs(collection(db, "noSchoolDays"));
+                noSchoolDays = [];
+                noSchoolSnapshot.forEach((doc) => { const data = doc.data(); noSchoolDays.push({ id: doc.id, type: data.type || 'standard' }); });
+
+                const silverSnapshot = await getDocs(collection(db, "silverDays"));
+                silverDays = [];
+                silverSnapshot.forEach((doc) => silverDays.push(doc.id));
+                
+                try {
+                    const semDoc = await getDoc(doc(db, "settings", "semester"));
+                    if(semDoc.exists()) { semesterSettings = semDoc.data(); }
+                } catch(e) { console.log("No semester settings yet"); }
+
+                await cleanupExpiredBirthdays();
+                generateSchedule(); 
+
+                updateViewBasedOnScreen();
+            } catch (e) { console.error(e); alert("Data load error: " + e.message); }
+        }
+        
+        // --- SCHEDULE CALCULATION ALGORITHM ---
+        function generateSchedule() {
+            generatedSchedule = {};
+            if(!semesterSettings.start || !semesterSettings.end) return;
+
+            let itr = new Date(semesterSettings.start + 'T12:00:00');
+            const end = new Date(semesterSettings.end + 'T12:00:00');
+            let seq = 1; 
+
+            let loopCount = 0;
+            while (itr <= end && loopCount < 366) {
+                loopCount++;
+                const dStr = getFormattedDate(itr);
+                const dayOfWeek = itr.getDay();
+
+                if (dayOfWeek === 0 || dayOfWeek === 6) { itr.setDate(itr.getDate() + 1); continue; }
+
+                const nsDay = noSchoolDays.find(n => n.id === dStr);
+
+                if (nsDay) { if (nsDay.type === 'snow') { seq++; } } 
+                else {
+                    const isM = (seq % 2 !== 0);
+                    const num = Math.ceil(seq / 2);
+                    generatedSchedule[dStr] = (isM ? 'M' : 'T') + num;
+                    seq++;
+                }
+                itr.setDate(itr.getDate() + 1);
+            }
+        }
+
+        function getDayType(dateStr) {
+            if (generatedSchedule[dateStr]) return generatedSchedule[dateStr];
+            if (typeof academicSchedule !== 'undefined' && academicSchedule[dateStr]) return academicSchedule[dateStr];
+            return "";
+        }
+
+        async function cleanupExpiredBirthdays() {
+            const birthdayGroups = {};
+            events.forEach(e => {
+                if (e.designator === 'Birthday' && e.recurrenceId) {
+                    if (!birthdayGroups[e.recurrenceId]) birthdayGroups[e.recurrenceId] = [];
+                    birthdayGroups[e.recurrenceId].push(e);
+                }
+            });
+
+            const batch = writeBatch(db);
+            let hasDeletions = false;
+            const now = new Date();
+
+            for (const rId in birthdayGroups) {
+                const groupEvents = birthdayGroups[rId];
+                if (groupEvents.length === 0) continue;
+                
+                const sample = groupEvents[0];
+                if (!sample.classes || sample.classes.length === 0) continue;
+                
+                let maxClassYear = 0;
+                sample.classes.forEach(c => { const y = 2000 + parseInt(c); if (y > maxClassYear) maxClassYear = y; });
+
+                const gradDate = new Date(maxClassYear, 5, 1); 
+                if (now > gradDate) {
+                    groupEvents.forEach(evt => { batch.delete(doc(db, "events", evt.id)); });
+                    hasDeletions = true;
+                }
+            }
+
+            if (hasDeletions) {
+                await batch.commit();
+                const eventsSnapshot = await getDocs(collection(db, "events"));
+                events = [];
+                eventsSnapshot.forEach((doc) => events.push({ ...doc.data(), id: doc.id }));
+            }
+        }
+
+        function updateViewBasedOnScreen() {
+            if (window.innerWidth <= 768) {
+                if (currentView !== 'day') { currentView = 'day'; }
+                els.weekViewBtn.style.display = 'none';
+            } else {
+                if (currentView === 'day') { currentView = 'week'; }
+                els.weekViewBtn.style.display = 'block';
+            }
+            renderCalendar();
+        }
+        
+        // --- CALENDAR LOGIC ---
+        function getFormattedDate(dateObj) {
+            const y = dateObj.getFullYear();
+            const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const d = String(dateObj.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+        
+        function isNoSchoolDay(dateStr) { return noSchoolDays.some(n => n.id === dateStr); }
+        function isWeekendOrNoSchool(dateStr) {
+            const d = new Date(dateStr + 'T12:00:00');
+            return (d.getDay() === 0 || d.getDay() === 6) || isNoSchoolDay(dateStr);
+        }
+
+        function getChipColor(cls) {
+            const colors = { '26': '#d9534f', '27': '#FFD700', '28': '#003087', '29': '#C0C0C0' };
+            return colors[cls] || 'black';
+        }
+
+        function getChipBackground(classes) {
+            if (!classes || classes.length === 0 || classes.length === 4) return 'black';
+            if (classes.length === 1) return getChipColor(classes[0]);
+            
+            const sortedClasses = [...classes].sort();
+            const segmentSize = 100 / sortedClasses.length;
+            let gradientParts = [];
+            sortedClasses.forEach((cls, index) => {
+                const color = getChipColor(cls);
+                const start = index * segmentSize;
+                const end = (index + 1) * segmentSize;
+                gradientParts.push(`${color} ${start}% ${end}%`);
+            });
+            return `linear-gradient(to right, ${gradientParts.join(', ')})`;
+        }
+
+        function getFilteredEvents() {
+            return events.filter(evt => {
+                if (filterState.mandatoryOnly && !evt.mandatory) return false;
+                if (filterState.classes.length > 0) {
+                    if (!evt.classes || evt.classes.length === 0) return true;
+                    if (!evt.classes.some(c => filterState.classes.includes(c))) return false;
+                }
+                if (filterState.designators.length > 0) {
+                    if (!evt.designator || !filterState.designators.includes(evt.designator)) return false;
+                }
+                return true;
+            });
+        }
+
+        function renderCalendar() {
+            if (currentView === 'month') { renderMonthView(); } 
+            else if (currentView === 'day') { renderDayView(); } 
+            else { renderWeekView(); }
+        }
+
+        function renderMonthView() {
+            els.mainHeaderTitle.innerText = "CS40 Calendar";
+            els.mainHeaderTitle.style.color = "#333";
+            const todayStr = getFormattedDate(new Date());
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            els.monthYear.innerText = `${monthNames[month]} ${year}`;
+            els.monthYear.style.color = ""; // Reset color
+            els.calendarGrid.innerHTML = "";
+            ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].forEach(day => {
+                const h = document.createElement('div'); h.className = 'grid-header-cell'; h.innerText = day; els.calendarGrid.appendChild(h);
+            });
+
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const prevLastDay = new Date(year, month, 0).getDate();
+
+            for (let x = firstDayIndex; x > 0; x--) {
+                const c = document.createElement('div'); c.className = 'day-cell inactive';
+                c.innerHTML = `<span class="date-number">${prevLastDay - x + 1}</span>`; els.calendarGrid.appendChild(c);
+            }
+
+            for (let i = 1; i <= daysInMonth; i++) {
+                const c = document.createElement('div'); c.className = 'day-cell';
+                const dateKey = getFormattedDate(new Date(year, month, i));
+                buildDayCellContent(c, dateKey, i);
+                if (dateKey === todayStr) c.querySelector('.date-number').classList.add('current-day');
+                els.calendarGrid.appendChild(c);
+            }
+            renderEventsOnGrid();
+        }
+
+        function renderWeekView() {
+            const todayStr = getFormattedDate(new Date());
+            const d = new Date(currentDate);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            const startOfWeek = new Date(d.setDate(diff));
+            const endOfWeek = new Date(d.setDate(diff + 6));
+            
+            const options = { month: 'short', day: 'numeric' };
+            els.mainHeaderTitle.innerText = `Week of ${startOfWeek.toLocaleDateString('en-US', options)} - ${endOfWeek.toLocaleDateString('en-US', { ...options, year: 'numeric'})}`;
+            els.mainHeaderTitle.style.color = "#333";
+            
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            els.monthYear.innerText = `${monthNames[startOfWeek.getMonth()]} ${startOfWeek.getFullYear()}`;
+            els.monthYear.style.color = ""; // Reset color
+
+            els.calendarGrid.innerHTML = "";
+            ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].forEach(dayName => {
+                const h = document.createElement('div'); h.className = 'grid-header-cell'; h.innerText = dayName; els.calendarGrid.appendChild(h);
+            });
+
+            let loopDate = new Date(startOfWeek);
+            for (let i = 0; i < 7; i++) {
+                const c = document.createElement('div'); c.className = 'day-cell week-view';
+                const dateKey = getFormattedDate(loopDate);
+                const dayNum = loopDate.getDate();
+                buildDayCellContent(c, dateKey, dayNum);
+                if (dateKey === todayStr) c.querySelector('.date-number').classList.add('current-day');
+                els.calendarGrid.appendChild(c);
+                loopDate.setDate(loopDate.getDate() + 1);
+            }
+            renderEventsOnGrid();
+        }
+
+        function renderDayView() {
+            const dateKey = getFormattedDate(currentDate);
+            const dayNum = currentDate.getDate();
+            const mainOptions = { month: 'long', day: 'numeric', year: 'numeric' };
+            
+            // Set Header Date Text
+            els.mainHeaderTitle.innerText = currentDate.toLocaleDateString('en-US', mainOptions);
+            
+            // Check if displayed date is Today
+            const todayStr = getFormattedDate(new Date());
+            if (dateKey === todayStr) {
+                els.mainHeaderTitle.style.color = "#ff0000"; // Bright Red for Today
+            } else {
+                els.mainHeaderTitle.style.color = "#333"; // Normal Color otherwise
+            }
+
+            const options = { weekday: 'long' };
+            els.monthYear.innerText = currentDate.toLocaleDateString('en-US', options);
+            els.monthYear.style.color = ""; // Reset to normal color (removed red override)
+
+            els.calendarGrid.innerHTML = "";
+            const c = document.createElement('div'); 
+            c.className = 'day-cell week-view';
+            c.style.minHeight = "60vh"; 
+            buildDayCellContent(c, dateKey, dayNum);
+            const numEl = c.querySelector('.date-number');
+            if(numEl) numEl.style.display = 'none';
+            els.calendarGrid.appendChild(c);
+            renderEventsOnGrid();
+        }
+
+        function buildDayCellContent(dayCell, dateKey, dayNum) {
+            const dayType = getDayType(dateKey);
+            const isNoSchool = isWeekendOrNoSchool(dateKey);
+            let htmlContent = `<span class="date-number">${dayNum}</span><div class="day-type">${dayType}</div>`;
+            
+            const d = new Date(dateKey + 'T12:00:00');
+            if (d.getDay() === 6) { 
+                const isSilver = silverDays.includes(dateKey);
+                htmlContent += `<div class="weekend-label">${isSilver ? "Silver Weekend" : "Blue Weekend"}</div>`;
+            }
+
+            htmlContent += `<div class="day-content">`;
+            if (isNoSchool) {
+                htmlContent += `<div class="day-section" style="border:none; height:100%; display:flex; flex-direction:column; justify-content:center;" id="cell-${dateKey}-weekend"></div>`;
+            } else if (dayType.startsWith('T')) {
+                htmlContent += `<div class="day-section" id="cell-${dateKey}-preflight" data-label="Preflight"></div><div class="day-section" id="cell-${dateKey}-morning" data-label="AM"></div><div class="day-section" id="cell-${dateKey}-other" data-label="Other"></div>`;
+            } else {
+                htmlContent += `<div class="day-section" id="cell-${dateKey}-preflight" data-label="Preflight"></div><div class="day-section" id="cell-${dateKey}-morning" data-label="AM"></div><div class="day-section" id="cell-${dateKey}-m5" data-label="M4.5"></div><div class="day-section" id="cell-${dateKey}-other" data-label="Other"></div>`;
+            }
+            htmlContent += `</div>`;
+            dayCell.innerHTML = htmlContent;
+            dayCell.addEventListener('click', () => openDayView(dateKey, dayType));
+        }
+
+        function renderEventsOnGrid() {
+            const eventsByTarget = {};
+            const filteredEvents = getFilteredEvents(); 
+
+            filteredEvents.forEach(evt => {
+                let targetId;
+                const isNoSchool = isWeekendOrNoSchool(evt.date);
+                if (isNoSchool) { targetId = `cell-${evt.date}-weekend`; } 
+                else { targetId = `cell-${evt.date}-${evt.period}`; }
+                if (!eventsByTarget[targetId]) eventsByTarget[targetId] = [];
+                eventsByTarget[targetId].push(evt);
+            });
+
+            Object.keys(eventsByTarget).forEach(targetId => {
+                const targetEl = document.getElementById(targetId);
+                if (!targetEl) return;
+                const evts = eventsByTarget[targetId];
+                
+                evts.sort((a, b) => {
+                    if (a.name === "Special Schedule of Calls") return -1;
+                    if (b.name === "Special Schedule of Calls") return 1;
+                    const isUntimedOtherA = (a.period === 'other') && !a.startTime;
+                    const isUntimedOtherB = (b.period === 'other') && !b.startTime;
+                    if (isUntimedOtherA && !isUntimedOtherB) return -1;
+                    if (!isUntimedOtherA && isUntimedOtherB) return 1;
+                    const tA = a.startTime || "99:99";
+                    const tB = b.startTime || "99:99";
+                    return tA.localeCompare(tB);
+                });
+
+                const isExtendedView = targetId.includes('weekend');
+                const limit = isExtendedView ? 6 : 2;
+                const showAll = currentView === 'week' || currentView === 'day';
+
+                if (!showAll && currentView === 'month' && evts.length > limit) {
+                    const shownEvents = evts.slice(0, limit);
+                    shownEvents.forEach(evt => { targetEl.appendChild(createEventChip(evt)); });
+                    const dotDiv = document.createElement('div');
+                    dotDiv.className = 'more-events-indicator';
+                    dotDiv.innerText = '...';
+                    targetEl.appendChild(dotDiv);
+                } else {
+                    evts.forEach(evt => { targetEl.appendChild(createEventChip(evt)); });
+                }
+            });
+        }
+
+        function createEventChip(evt) {
+            const chip = document.createElement('div');
+            chip.className = 'event-chip';
+            let displayText = evt.name + (evt.tentative ? "*" : "");
+
+            if (evt.name === "Special Schedule of Calls") {
+                chip.style.background = "white"; chip.style.color = "black"; chip.style.textAlign = "center"; chip.style.border = "1px solid #ccc"; chip.style.fontWeight = "bold"; 
+                chip.style.padding = "1px 4px"; 
+                chip.innerText = displayText; return chip;
+            }
+
+            if (currentView === 'month') {
+                chip.innerText = displayText;
+            } else {
+                let content = `<span style="font-weight:bold; display:block;">${displayText}</span>`;
+                if (evt.startTime) content += `<span style="display:block; font-size:0.85em; opacity:0.9;">${evt.startTime}${evt.endTime ? '-' + evt.endTime : ''}</span>`;
+                if (evt.location) content += `<span style="display:block; font-size:0.85em; font-style:italic; opacity:0.9;">${evt.location}</span>`;
+                chip.innerHTML = content;
+            }
+
+            // Logic for Chip Color
+            if (evt.hasOwnProperty('mandatory') && !evt.mandatory) {
+                // Non-Mandatory is Orange
+                chip.style.backgroundColor = "#fd7e14"; 
+                chip.style.color = "white";
+                chip.style.border = "none";
+            } else if (evt.tentative) {
+                // Keep tentative style if mandatory but tentative (though legend removed *)
+                chip.style.backgroundColor = "white"; chip.style.color = "black";
+                if (!evt.classes || evt.classes.length === 0 || evt.classes.length === 4) { chip.style.border = "2px solid black"; } 
+                else if (evt.classes.length === 1) { chip.style.border = "2px solid " + getChipColor(evt.classes[0]); } 
+                else { chip.style.border = "2px solid #333"; }
+            } else {
+                chip.style.background = getChipBackground(evt.classes);
+            }
+            return chip;
+        }
+
+        // --- VIEW LEGEND TOGGLE ---
+        els.viewLegendBtn.addEventListener('click', () => {
+            const isVisible = els.cleanModeLegend.classList.contains('visible');
+            if (isVisible) {
+                els.cleanModeLegend.classList.remove('visible');
+                els.headerActionsRight.classList.remove('hidden');
+                els.viewLegendBtn.innerText = "View Legend";
+            } else {
+                els.cleanModeLegend.classList.add('visible');
+                els.headerActionsRight.classList.add('hidden');
+                els.viewLegendBtn.innerText = "Hide Legend";
+            }
+        });
+
+        // --- FILTER HANDLERS ---
+        els.filterBtn.onclick = () => { els.filterModal.style.display = 'flex'; };
+        els.closeFilterBtn.onclick = () => { els.filterModal.style.display = 'none'; };
+        els.clearFiltersBtn.onclick = () => { filterClassChecks.forEach(cb => cb.checked = false); filterDesignatorChecks.forEach(cb => cb.checked = false); els.filterMandatoryCheck.checked = false; updateFilters(); };
+        els.selectAllFiltersBtn.onclick = () => { filterClassChecks.forEach(cb => cb.checked = true); filterDesignatorChecks.forEach(cb => cb.checked = true); updateFilters(); };
+        function updateFilters() {
+            filterState.classes = []; filterClassChecks.forEach(cb => { if (cb.checked) filterState.classes.push(cb.value); });
+            filterState.designators = []; filterDesignatorChecks.forEach(cb => { if (cb.checked) filterState.designators.push(cb.value); });
+            filterState.mandatoryOnly = els.filterMandatoryCheck.checked;
+            if(filterState.classes.length > 0 || filterState.mandatoryOnly || filterState.designators.length > 0) { els.filterBtn.classList.add('active-filter'); } else { els.filterBtn.classList.remove('active-filter'); }
+            renderCalendar();
+        }
+        filterClassChecks.forEach(cb => cb.addEventListener('change', updateFilters));
+        filterDesignatorChecks.forEach(cb => cb.addEventListener('change', updateFilters));
+        els.filterMandatoryCheck.addEventListener('change', updateFilters);
+
+        // --- SETTINGS (UPDATED) ---
+        els.settingsBtn.addEventListener('click', () => {
+            // No longer check PIN here. Open public menu.
+            els.settingsModal.style.display = 'flex';
+            updateSettingsUI();
+            
+            // Ensure Admin Button is visible on Desktop if not unlocked/locked logic applies standardly
+            if(!isSettingsUnlocked) els.adminLoginBtn.style.display = 'block';
+        });
+
+        // Mobile Settings Button Handler
+        els.mobileSettingsBtn.addEventListener('click', () => {
+             els.settingsModal.style.display = 'flex';
+             updateSettingsUI();
+             
+             // Hide Admin Login Button for Mobile Public Users
+             els.adminLoginBtn.style.display = 'none';
+        });
+
+        // Admin Login Button in Public Menu
+        els.adminLoginBtn.onclick = () => {
+             els.settingsModal.style.display = 'none'; // Temporarily hide main settings
+             els.pinInput.value = ""; 
+             els.pinModal.style.display = 'flex'; 
+             els.pinInput.focus();
+        };
+
+        function checkPin() {
+            if (currentPin && els.pinInput.value === currentPin) { 
+                isSettingsUnlocked = true; 
+                els.pinModal.style.display = 'none'; 
+                els.settingsModal.style.display = 'flex'; // Re-open settings
+                updateSettingsUI(); 
+            } 
+            else { alert("Incorrect PIN."); els.pinInput.value = ""; els.pinInput.focus(); }
+        }
+        els.submitPinBtn.onclick = checkPin;
+        els.cancelPinBtn.onclick = () => {
+            els.pinModal.style.display = 'none';
+            els.settingsModal.style.display = 'flex'; // Go back to public settings
+        };
+        els.pinInput.onkeypress = (e) => { if(e.key === 'Enter') checkPin(); };
+        els.closeSettingsBtn.onclick = () => els.settingsModal.style.display = 'none';
+        
+        els.toggleEditModeBtn.addEventListener('click', () => { isEditMode = !isEditMode; updateEditModeUI(); updateSettingsUI(); });
+
+        function updateSettingsUI() {
+            // Update Admin Panel Visibility
+            if (isSettingsUnlocked) {
+                els.adminLoginBtn.style.display = 'none';
+                els.adminControlsContainer.classList.add('visible');
+            } else {
+                // Default state - will be overridden by mobile click handler if needed
+                els.adminLoginBtn.style.display = 'block';
+                els.adminControlsContainer.classList.remove('visible');
+            }
+
+            // Update Edit Mode Button Text
+            if (isEditMode) { els.toggleEditModeBtn.innerText = "Exit Edit Mode"; els.toggleEditModeBtn.classList.remove('inactive'); els.toggleEditModeBtn.classList.add('active'); } 
+            else { els.toggleEditModeBtn.innerText = "Enter Edit Mode"; els.toggleEditModeBtn.classList.remove('active'); els.toggleEditModeBtn.classList.add('inactive'); }
+        }
+
+        // --- PUBLIC EXPORT CALENDAR ---
+        els.publicExportBtn.onclick = () => {
+             els.settingsModal.style.display = 'none';
+             els.publicExportModal.style.display = 'flex';
+        };
+        els.closePublicExportBtn.onclick = () => els.publicExportModal.style.display = 'none';
+
+        function generateExport(format) {
+             const selectedTypes = [];
+             exportFilterChecks.forEach(cb => { if (cb.checked) selectedTypes.push(cb.value); });
+             
+             if(selectedTypes.length === 0) { alert("Please select at least one event type."); return; }
+             
+             const exportEvents = events.filter(e => selectedTypes.includes(e.designator));
+             
+             if (exportEvents.length === 0) { alert("No events found with selected types."); return; }
+
+             let icsContent = "";
+             
+             if (format === 'vcs') {
+                 // vCalendar 1.0 (VCS)
+                 icsContent = "BEGIN:VCALENDAR\nVERSION:1.0\nPRODID:-//CS40 Calendar//EN\n";
+                 exportEvents.forEach(evt => {
+                     // Safety checks for corrupt data
+                     if (!evt.date || typeof evt.date !== 'string') return;
+                     
+                     let desc = "";
+                     if (evt.notes && typeof evt.notes === 'string') {
+                         desc = evt.notes.replace(/\n/g, '\\n').replace(/;/g, '\\;').replace(/,/g, '\\,');
+                     }
+                     let summary = evt.name || "Event";
+                     
+                     let startTimeSafe = (evt.startTime && typeof evt.startTime === 'string') ? evt.startTime.replace(':','') + '00' : '000000';
+                     let endTimeSafe = (evt.endTime && typeof evt.endTime === 'string') ? evt.endTime.replace(':','') + '00' : '235900';
+
+                     let dtStart = evt.date.replace(/-/g, '') + 'T' + startTimeSafe;
+                     let dtEnd = evt.date.replace(/-/g, '') + 'T' + endTimeSafe;
+                     
+                     icsContent += "BEGIN:VEVENT\n";
+                     icsContent += `SUMMARY:${summary}\n`;
+                     icsContent += `DTSTART:${dtStart}\n`;
+                     icsContent += `DTEND:${dtEnd}\n`;
+                     if (desc) icsContent += `DESCRIPTION:${desc}\n`;
+                     if (evt.location) icsContent += `LOCATION:${evt.location}\n`;
+                     icsContent += "END:VEVENT\n";
+                 });
+                 icsContent += "END:VCALENDAR";
+                 downloadFile(icsContent, "cs40_calendar.vcs", "text/x-vcalendar");
+             } 
+             else {
+                 // iCalendar 2.0 (ICS) - Apple
+                 icsContent = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//CS40 Calendar//EN\nCALSCALE:GREGORIAN\n";
+                 exportEvents.forEach(evt => {
+                     // Safety check
+                     if (!evt.date || typeof evt.date !== 'string') return;
+                     
+                     const uid = evt.id;
+                     const dateStr = evt.date.replace(/-/g, '');
+                     let dtStart = `${dateStr}`;
+                     let dtEnd = `${dateStr}`;
+                     let allDay = true;
+
+                     if (evt.startTime && typeof evt.startTime === 'string' && evt.startTime.trim() !== "") {
+                         allDay = false;
+                         dtStart += `T${evt.startTime.replace(':','')}00`;
+                         if (evt.endTime && typeof evt.endTime === 'string' && evt.endTime.trim() !== "") {
+                            dtEnd += `T${evt.endTime.replace(':','')}00`;
+                         } else {
+                            // Default to +1 hour if no end time
+                            let parts = evt.startTime.split(':');
+                            if (parts.length >= 2) {
+                                let h = parseInt(parts[0]) + 1;
+                                let m = parts[1];
+                                if (h >= 24) { h = 23; m = '59'; } // Clamp to end of day
+                                dtEnd += `T${String(h).padStart(2,'0')}${m}00`;
+                            } else {
+                                dtEnd += `T235900`;
+                            }
+                         }
+                     } else {
+                         const nextDay = new Date(evt.date);
+                         nextDay.setDate(nextDay.getDate() + 1);
+                         const y = nextDay.getFullYear();
+                         const m = String(nextDay.getMonth() + 1).padStart(2, '0');
+                         const d = String(nextDay.getDate()).padStart(2, '0');
+                         dtEnd = `${y}${m}${d}`;
+                     }
+
+                     icsContent += "BEGIN:VEVENT\n";
+                     icsContent += `UID:${uid}\n`;
+                     icsContent += `DTSTAMP:${new Date().toISOString().replace(/[-:]/g,'').split('.')[0]}Z\n`;
+                     if (allDay) {
+                         icsContent += `DTSTART;VALUE=DATE:${dtStart}\n`;
+                         icsContent += `DTEND;VALUE=DATE:${dtEnd}\n`;
+                     } else {
+                         icsContent += `DTSTART:${dtStart}\n`;
+                         icsContent += `DTEND:${dtEnd}\n`;
+                     }
+                     icsContent += `SUMMARY:${evt.name}\n`;
+                     if (evt.location) icsContent += `LOCATION:${evt.location}\n`;
+                     if (evt.notes) icsContent += `DESCRIPTION:${evt.notes.replace(/\n/g, '\\n')}\n`;
+                     icsContent += "END:VEVENT\n";
+                 });
+                 icsContent += "END:VCALENDAR";
+                 downloadFile(icsContent, "cs40_calendar.ics", "text/calendar");
+             }
+        }
+
+        function downloadFile(content, fileName, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        els.exportAppleBtn.onclick = () => generateExport('ics');
+        els.exportGoogleBtn.onclick = () => generateExport('vcs');
+
+
+        // SEMESTER MODAL
+        els.setSemesterBtn.onclick = () => {
+            els.settingsModal.style.display = 'none';
+            els.semesterModal.style.display = 'flex';
+            if (semesterSettings.start) els.semesterStart.value = semesterSettings.start;
+            if (semesterSettings.end) els.semesterEnd.value = semesterSettings.end;
+        };
+        els.cancelSemesterBtn.onclick = () => els.semesterModal.style.display = 'none';
+        
+        els.saveSemesterBtn.onclick = async () => {
+            const start = els.semesterStart.value;
+            const end = els.semesterEnd.value;
+            if (!start || !end) { alert("Please select both dates."); return; }
+            try {
+                await setDoc(doc(db, "settings", "semester"), { start, end });
+                semesterSettings = { start, end };
+                generateSchedule(); 
+                await loadData();
+                els.semesterModal.style.display = 'none';
+            } catch(e) { alert("Error saving semester: " + e.message); }
+        };
+
+        // --- CHANGE PIN LOGIC ---
+        els.changePinBtn.onclick = () => {
+            els.settingsModal.style.display = 'none';
+            els.currentPinInput.value = "";
+            els.newPinInput.value = "";
+            els.verifyPinInput.value = "";
+            els.changePinModal.style.display = 'flex';
+        };
+        els.cancelChangePinBtn.onclick = () => els.changePinModal.style.display = 'none';
+
+        els.saveNewPinBtn.onclick = async () => {
+            const oldPin = els.currentPinInput.value;
+            const newPin = els.newPinInput.value;
+            const verifyPin = els.verifyPinInput.value;
+
+            if (oldPin !== currentPin) { alert("Current PIN is incorrect."); return; }
+            if (newPin.length < 4) { alert("New PIN must be at least 4 characters."); return; }
+            if (newPin !== verifyPin) { alert("New PINs do not match."); return; }
+
+            try {
+                await setDoc(doc(db, "settings", "security"), { pin: newPin });
+                currentPin = newPin;
+                alert("PIN updated successfully.");
+                els.changePinModal.style.display = 'none';
+            } catch (e) { alert("Error updating PIN: " + e.message); }
+        };
+
+        // --- EXPORT DATA LOGIC (ADMIN BACKUP) ---
+        els.exportDataBtn.onclick = () => {
+            const exportObj = {
+                exportedAt: new Date().toISOString(),
+                events: events,
+                noSchoolDays: noSchoolDays,
+                silverDays: silverDays,
+                semesterSettings: semesterSettings
+            };
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "cs40_calendar_backup_" + getFormattedDate(new Date()) + ".json");
+            document.body.appendChild(downloadAnchorNode); 
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        };
+
+        // --- DATA CLEANUP LOGIC ---
+        els.cleanupDataBtn.onclick = () => {
+            els.settingsModal.style.display = 'none';
+            els.cleanupPinInput.value = "";
+            els.cleanupModal.style.display = 'flex';
+        };
+        els.cancelCleanupBtn.onclick = () => els.cleanupModal.style.display = 'none';
+
+        els.executeCleanupBtn.onclick = async () => {
+            if (els.cleanupPinInput.value !== currentPin) { alert("Incorrect PIN. Cleanup aborted."); return; }
+            if (!confirm("Are you absolutely sure? This will permanently delete events older than the selected timeframe.")) { return; }
+
+            const months = parseInt(els.cleanupTimeframe.value);
+            const cutoffDate = new Date();
+            cutoffDate.setMonth(cutoffDate.getMonth() - months);
+            const cutoffStr = getFormattedDate(cutoffDate);
+
+            const eventsToDelete = events.filter(e => e.date < cutoffStr);
+            if (eventsToDelete.length === 0) { alert("No events found older than the selected date."); return; }
+
+            els.executeCleanupBtn.innerText = "Deleting...";
+            try {
+                const batchSize = 450;
+                for (let i = 0; i < eventsToDelete.length; i += batchSize) {
+                    const batch = writeBatch(db);
+                    const chunk = eventsToDelete.slice(i, i + batchSize);
+                    chunk.forEach(evt => { batch.delete(doc(db, "events", evt.id)); });
+                    await batch.commit();
+                }
+                alert(`Successfully deleted ${eventsToDelete.length} old events.`);
+                await loadData();
+                els.cleanupModal.style.display = 'none';
+            } catch (e) { alert("Error deleting data: " + e.message); } 
+            finally { els.executeCleanupBtn.innerText = "Delete Old Data"; }
+        };
+
+        // EVENT LIST
+        els.openEventListBtn.onclick = () => { els.settingsModal.style.display = 'none'; els.eventsListModal.style.display = 'flex'; };
+        els.closeEventsListBtn.onclick = () => els.eventsListModal.style.display = 'none';
+        els.generateListBtn.onclick = () => {
+            const selectedTypes = []; listFilterChecks.forEach(cb => { if(cb.checked) selectedTypes.push(cb.value); });
+            if (selectedTypes.length === 0) { alert("Please select at least one event type."); return; }
+            const filtered = events.filter(e => selectedTypes.includes(e.designator));
+            filtered.sort((a, b) => new Date(a.date) - new Date(b.date));
+            els.eventsListResults.innerHTML = "";
+            if (filtered.length === 0) { els.eventsListResults.innerHTML = "<p style='padding:20px; text-align:center;'>No events found for selected types.</p>"; return; }
+            filtered.forEach(evt => {
+                const item = document.createElement('div'); item.className = 'event-list-item';
+                const dateObj = new Date(evt.date + 'T12:00:00'); 
+                const dateStr = dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                const header = `<div class="event-list-header"><div class="event-list-date">${dateStr}</div><div class="event-list-name">${evt.name}</div><div class="event-list-designator">${evt.designator}</div></div>`;
+                const periodNames = { 'preflight': 'Preflight', 'morning': 'Morning Period', 'm5': 'M4.5', 'other': 'Other' };
+                let attendanceStr = (!evt.classes || evt.classes.length === 0 || evt.classes.length === 4) ? 'All' : evt.classes.join(', ');
+                let timeDisplay = evt.startTime ? (evt.startTime + (evt.endTime ? ` - ${evt.endTime}` : '')) : (periodNames[evt.period] || 'Other');
+                let locationHtml = evt.location ? `<p><strong>Location:</strong> ${evt.location}</p>` : "";
+                if (evt.designator === 'Birthday') { timeDisplay = ""; locationHtml = ""; attendanceStr = `Class Year: ${attendanceStr}`; } 
+                else if (evt.designator === 'Holiday') { timeDisplay = ""; locationHtml = ""; attendanceStr = "All"; }
+                let detailsContent = `<div class="event-list-details">`;
+                if (timeDisplay) detailsContent += `<p><strong>Time:</strong> ${timeDisplay}</p>`;
+                if (locationHtml) detailsContent += locationHtml;
+                if (evt.designator === 'Birthday') { detailsContent += `<p><strong>${attendanceStr}</strong></p>`; } else { detailsContent += `<p><strong>Attendance:</strong> ${attendanceStr}</p>`; }
+                if (evt.notes && evt.notes.trim()) { detailsContent += `<div style="margin-top:5px; border-top:1px solid #ddd; padding-top:5px;"><strong>Notes:</strong><br>${evt.notes}</div>`; }
+                detailsContent += `</div>`;
+                item.innerHTML = header + detailsContent;
+                item.addEventListener('click', () => { item.classList.toggle('expanded'); });
+                els.eventsListResults.appendChild(item);
+            });
+        };
+
+        function updateEditModeUI() {
+            if (isEditMode) { els.headerActionsRight.classList.add('edit-active'); els.addEventBtn.style.display = 'block'; } 
+            else { els.headerActionsRight.classList.remove('edit-active'); els.addEventBtn.style.display = 'none'; }
+            if (els.dayViewModal.style.display === 'flex' && currentDayViewKey) { const type = getDayType(currentDayViewKey); openDayView(currentDayViewKey, type); }
+        }
+
+        function openDayView(dateKey, dayType) {
+            currentDayViewKey = dateKey;
+            els.dayViewDateDisplay.innerText = new Date(dateKey + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            els.dayViewTypeDisplay.innerText = dayType ? `Day: ${dayType}` : "No M/T Type";
+            els.dayViewList.innerHTML = ""; 
+
+            if (isEditMode) {
+                els.dayViewEditControls.style.display = 'flex';
+                const d = new Date(dateKey + 'T12:00:00');
+                if (d.getDay() === 6) { 
+                    els.standardControls.style.display = 'none'; els.saturdayControls.style.display = 'flex'; els.silverCheck.checked = silverDays.includes(dateKey);
+                } else {
+                    els.standardControls.style.display = 'flex'; els.saturdayControls.style.display = 'none';
+                    const nsEntry = noSchoolDays.find(n => n.id === dateKey);
+                    const isNS = !!nsEntry;
+                    const isSnow = nsEntry && nsEntry.type === 'snow';
+
+                    els.noSchoolCheck.checked = isNS;
+                    els.snowDayCheck.checked = isSnow;
+                    els.snowDayLabel.style.display = isNS ? 'flex' : 'none';
+
+                    const existingSSOC = events.find(e => e.date === dateKey && e.name === "Special Schedule of Calls");
+                    els.ssocCheck.checked = !!existingSSOC;
+                }
+                els.dayViewAddBtn.onclick = () => { els.dayViewModal.style.display = 'none'; openAddModal(dateKey); };
+                
+                els.noSchoolCheck.onclick = async () => {
+                    const isChecked = els.noSchoolCheck.checked;
+                    els.snowDayLabel.style.display = isChecked ? 'flex' : 'none';
+                    if (!isChecked) els.snowDayCheck.checked = false; 
+                    try { 
+                        if (isChecked) { await setDoc(doc(db, "noSchoolDays", dateKey), { type: 'standard' }); } 
+                        else { await deleteDoc(doc(db, "noSchoolDays", dateKey)); } 
+                        await loadData();
+                    } catch(e) { alert("Error: " + e.message); }
+                };
+
+                els.snowDayCheck.onclick = async () => {
+                    const isSnow = els.snowDayCheck.checked;
+                    if (!els.noSchoolCheck.checked) { alert("Enable No School first."); els.snowDayCheck.checked = false; return; }
+                    try { await setDoc(doc(db, "noSchoolDays", dateKey), { type: isSnow ? 'snow' : 'standard' }); await loadData(); } catch(e) { alert("Error: " + e.message); }
+                };
+
+                els.ssocCheck.onclick = async () => {
+                    try { if (els.ssocCheck.checked) { await addDoc(collection(db, "events"), { date: dateKey, name: "Special Schedule of Calls", period: "other", classes: [] }); } else { const ssocEvents = events.filter(e => e.date === dateKey && e.name === "Special Schedule of Calls"); for (const evt of ssocEvents) await deleteDoc(doc(db, "events", evt.id)); } await loadData(); } catch(e) { alert("Error: " + e.message); }
+                };
+                els.silverCheck.onclick = async () => {
+                    try { if (els.silverCheck.checked) { await setDoc(doc(db, "silverDays", dateKey), { active: true }); silverDays.push(dateKey); } else { await deleteDoc(doc(db, "silverDays", dateKey)); silverDays = silverDays.filter(d => d !== dateKey); } renderCalendar(); } catch(e) { alert("Error: " + e.message); }
+                };
+            } else { els.dayViewEditControls.style.display = 'none'; }
+
+            const dayEvents = getFilteredEvents().filter(e => e.date === dateKey);
+            const isNoSchool = isWeekendOrNoSchool(dateKey);
+            const pO = { 'preflight': 1, 'morning': 2, 'm5': 3, 'other': 4 };
+            
+            dayEvents.sort((a, b) => {
+                if (a.name === "Special Schedule of Calls") return -1;
+                if (b.name === "Special Schedule of Calls") return 1;
+                if (isNoSchool) {
+                    const tA = a.startTime || "99:99";
+                    const tB = b.startTime || "99:99";
+                    return tA.localeCompare(tB);
+                } else {
+                    const pA = pO[a.period] || 99;
+                    const pB = pO[b.period] || 99;
+                    if (pA !== pB) return pA - pB;
+                    const tA = a.startTime || "99:99";
+                    const tB = b.startTime || "99:99";
+                    return tA.localeCompare(tB);
+                }
+            });
+
+            if (dayEvents.length === 0) els.dayViewList.innerHTML = "<p style='color:#777; font-style:italic;'>No events.</p>";
+            else {
+                dayEvents.forEach(evt => {
+                    const item = document.createElement('div'); item.className = 'day-view-item';
+                    const periodNames = { 'preflight': 'Preflight', 'morning': 'Morning Period', 'm5': 'M4.5', 'other': 'Other' };
+                    let attendanceStr = (!evt.classes || evt.classes.length === 0 || evt.classes.length === 4) ? 'All' : evt.classes.join(', ');
+                    let timeDisplay = evt.startTime ? (evt.startTime + (evt.endTime ? ` - ${evt.endTime}` : '')) : (periodNames[evt.period] || 'Other');
+                    let locationHtml = evt.location ? `<p><strong>Location:</strong> ${evt.location}</p>` : "";
+                    
+                    let nameDisplay = evt.name + (evt.tentative ? "*" : "");
+                    if (evt.designator === 'Birthday') { timeDisplay = ""; locationHtml = ""; attendanceStr = `Class Year: ${attendanceStr}`; } 
+                    else if (evt.designator === 'Holiday') { timeDisplay = ""; locationHtml = ""; attendanceStr = "All"; }
+
+                    let leftCol = `<div class="day-view-info"><h4>${nameDisplay}</h4>`;
+                    if (timeDisplay) leftCol += `<p><strong>Time:</strong> ${timeDisplay}</p>`;
+                    if (locationHtml) leftCol += locationHtml;
+                    if (evt.designator === 'Birthday') { leftCol += `<p><strong>${attendanceStr}</strong></p>`; } else { leftCol += `<p><strong>Attendance:</strong> ${attendanceStr}</p>`; }
+
+                    if (isEditMode) {
+                        leftCol += `<button class="action-btn-sm edit-btn" style="display:inline-block;">Edit</button><button class="action-btn-sm delete-btn" style="display:inline-block;">Delete</button>`;
+                        if (evt.recurrenceId && evt.designator !== 'Birthday' && evt.designator !== 'Holiday') { leftCol += `<button class="action-btn-sm delete-series-btn" style="display:inline-block; margin-left: 5px;">Delete Series</button>`; }
+                    }
+                    leftCol += `</div>`;
+                    let rightCol = (evt.notes && evt.notes.trim()) ? `<div class="day-view-notes"><strong>Notes:</strong>${evt.notes}</div>` : "";
+                    item.innerHTML = leftCol + rightCol;
+
+                    if (isEditMode) {
+                        item.querySelector('.edit-btn').onclick = () => { els.dayViewModal.style.display = 'none'; openAddModal(dateKey, evt); };
+                        const delBtn = item.querySelector('.delete-btn');
+                        delBtn.onclick = async () => { 
+                            if (evt.recurrenceId && (evt.designator === 'Birthday' || evt.designator === 'Holiday')) {
+                                if(confirm("Delete this " + evt.designator + "? This will remove all future occurrences.")) {
+                                    try {
+                                        const q = query(collection(db, "events"), where("recurrenceId", "==", evt.recurrenceId));
+                                        const querySnapshot = await getDocs(q);
+                                        const batch = writeBatch(db);
+                                        querySnapshot.forEach((doc) => { batch.delete(doc.ref); });
+                                        await batch.commit(); await loadData(); openDayView(dateKey, dayType);
+                                    } catch (err) { alert("Error deleting: " + err.message); }
+                                }
+                            } else {
+                                if(confirm("Delete this single event?")) { await deleteDoc(doc(db, "events", evt.id)); await loadData(); openDayView(dateKey, dayType); }
+                            }
+                        };
+                        const seriesBtn = item.querySelector('.delete-series-btn');
+                        if (seriesBtn) {
+                            seriesBtn.onclick = async () => {
+                                if(confirm("Are you sure you want to delete ALL events in this series? This cannot be undone.")) {
+                                    try {
+                                        const q = query(collection(db, "events"), where("recurrenceId", "==", evt.recurrenceId));
+                                        const querySnapshot = await getDocs(q);
+                                        const batch = writeBatch(db);
+                                        querySnapshot.forEach((doc) => { batch.delete(doc.ref); });
+                                        await batch.commit(); await loadData(); openDayView(dateKey, dayType);
+                                    } catch (err) { alert("Error deleting series: " + err.message); }
+                                }
+                            };
+                        }
+                    }
+                    els.dayViewList.appendChild(item);
+                });
+            }
+            els.dayViewModal.style.display = 'flex';
+        }
+
+        function openAddModal(dateStr, eventToEdit = null) {
+            // Reset Fields
+            els.eventName.value = ''; els.eventLocation.value = ''; els.startTime.value = ''; els.endTime.value = ''; els.eventNotes.value = '';
+            els.allClassesCheck.checked = false; classChecks.forEach(cb => cb.checked = false); els.customTimeCheck.checked = false; 
+            els.mandatoryCheck.checked = true; els.tentativeCheck.checked = false;
+            els.eventDesignator.value = "Other"; 
+            
+            // Reset Recurrence Fields
+            els.recurrenceCheck.checked = false; els.recurrenceOptions.classList.remove('active');
+            els.recurrenceFreq.value = "daily"; els.recurrenceEndDate.value = "";
+            recurDayChecks.forEach(cb => cb.checked = false); els.recurrenceDaysGroup.style.display = 'none';
+            els.birthdayClassSelect.value = ""; 
+
+            if (eventToEdit) {
+                editingEventId = eventToEdit.id;
+                els.modalTitle.innerText = "Edit Event"; els.saveEventBtn.innerText = "Update Event";
+                els.eventDate.value = eventToEdit.date; els.eventName.value = eventToEdit.name; els.eventLocation.value = eventToEdit.location || ''; els.eventNotes.value = eventToEdit.notes || '';
+                els.recurrenceCheck.disabled = true; els.recurrenceCheck.parentElement.style.opacity = "0.5"; els.recurrenceCheck.parentElement.title = "Cannot change recurrence on edit.";
+
+                if (eventToEdit.hasOwnProperty('mandatory')) els.mandatoryCheck.checked = eventToEdit.mandatory;
+                if (eventToEdit.hasOwnProperty('tentative')) els.tentativeCheck.checked = eventToEdit.tentative;
+                if (eventToEdit.hasOwnProperty('designator')) els.eventDesignator.value = eventToEdit.designator; 
+
+                if(eventToEdit.classes) { 
+                    eventToEdit.classes.forEach(cls => { const cb = document.querySelector(`.class-check[value="${cls}"]`); if(cb) cb.checked = true; }); 
+                    if(eventToEdit.classes.length === 4) els.allClassesCheck.checked = true; 
+                    if (eventToEdit.designator === 'Birthday' && eventToEdit.classes.length > 0) { els.birthdayClassSelect.value = eventToEdit.classes[0]; }
+                }
+                const isNoSchool = isWeekendOrNoSchool(eventToEdit.date);
+                if (isNoSchool) { els.startTime.value = eventToEdit.startTime || ''; els.endTime.value = eventToEdit.endTime || ''; } 
+                else { els.eventPeriod.value = eventToEdit.period; if (eventToEdit.period !== 'other' && (eventToEdit.startTime || eventToEdit.endTime)) els.customTimeCheck.checked = true; els.startTime.value = eventToEdit.startTime || ''; els.endTime.value = eventToEdit.endTime || ''; }
+                updateModalOptions(eventToEdit.date);
+            } else { 
+                editingEventId = null; els.modalTitle.innerText = "Add Event"; els.saveEventBtn.innerText = "Save"; 
+                els.eventDate.value = dateStr; 
+                els.recurrenceCheck.disabled = false; els.recurrenceCheck.parentElement.style.opacity = "1"; els.recurrenceCheck.parentElement.title = "";
+                updateModalOptions(dateStr); 
+            }
+            els.eventModal.style.display = 'flex';
+        }
+
+        els.recurrenceCheck.addEventListener('change', () => { if (els.recurrenceCheck.checked) { els.recurrenceOptions.classList.add('active'); } else { els.recurrenceOptions.classList.remove('active'); } });
+        els.recurrenceFreq.addEventListener('change', () => { if (els.recurrenceFreq.value === 'weekly') { els.recurrenceDaysGroup.style.display = 'block'; } else { els.recurrenceDaysGroup.style.display = 'none'; } });
+
+        function handleDesignatorChange() {
+            const val = els.eventDesignator.value;
+            if (val === 'Holiday') {
+                els.locationGroup.style.display = 'none'; els.periodGroup.style.display = 'none'; els.customTimeCheckContainer.style.display = 'none';
+                els.timeframeGroup.style.display = 'none'; els.classGroup.style.display = 'none'; els.footerToggles.style.display = 'none'; els.recurrenceContainer.style.display = 'none';
+            } else if (val === 'Birthday') {
+                els.locationGroup.style.display = 'none'; els.periodGroup.style.display = 'none'; els.customTimeCheckContainer.style.display = 'none';
+                els.timeframeGroup.style.display = 'none'; els.footerToggles.style.display = 'none'; els.recurrenceContainer.style.display = 'none';
+                els.classGroup.style.display = 'block'; els.classLabel.innerText = "Class Year";
+                els.classCheckboxGroup.style.display = 'none'; els.birthdayClassSelect.style.display = 'block';
+            } else {
+                els.locationGroup.style.display = 'block'; els.classGroup.style.display = 'block';
+                els.classLabel.innerText = "Class Attendance"; els.classCheckboxGroup.style.display = 'flex'; els.birthdayClassSelect.style.display = 'none';
+                els.footerToggles.style.display = 'flex'; els.recurrenceContainer.style.display = 'block';
+                updateModalOptions(els.eventDate.value);
+            }
+        }
+        els.eventDesignator.addEventListener('change', handleDesignatorChange);
+
+        function updateModalOptions(dateStr) {
+            const val = els.eventDesignator.value;
+            if (val === 'Birthday' || val === 'Holiday') { handleDesignatorChange(); return; }
+            els.locationGroup.style.display = 'block'; els.classGroup.style.display = 'block';
+            els.classLabel.innerText = "Class Attendance"; els.classCheckboxGroup.style.display = 'flex'; els.birthdayClassSelect.style.display = 'none';
+            els.footerToggles.style.display = 'flex'; els.recurrenceContainer.style.display = 'block';
+            const isNoSchool = isWeekendOrNoSchool(dateStr);
+            const selectedPeriod = els.eventPeriod.value;
+            if (isNoSchool) { els.periodGroup.style.display = 'none'; els.timeframeGroup.style.display = 'block'; els.customTimeCheckContainer.style.display = 'none'; } 
+            else { els.periodGroup.style.display = 'block'; if (selectedPeriod === 'other') { els.customTimeCheckContainer.style.display = 'none'; els.timeframeGroup.style.display = 'block'; } else { els.customTimeCheckContainer.style.display = 'block'; els.timeframeGroup.style.display = els.customTimeCheck.checked ? 'block' : 'none'; }
+                const dayType = getDayType(dateStr); if (dayType.startsWith('T')) { els['opt-m5'].style.display = 'none'; if (els.eventPeriod.value === 'm5') els.eventPeriod.value = 'preflight'; } else { els['opt-m5'].style.display = 'block'; } }
+        }
+
+        els.customTimeCheck.addEventListener('change', () => updateModalOptions(els.eventDate.value));
+        els.eventPeriod.addEventListener('change', () => updateModalOptions(els.eventDate.value));
+        els.eventDate.addEventListener('change', (e) => updateModalOptions(e.target.value));
+        els.allClassesCheck.addEventListener('change', (e) => { classChecks.forEach(cb => cb.checked = e.target.checked); });
+        classChecks.forEach(cb => { cb.addEventListener('change', () => { els.allClassesCheck.checked = Array.from(classChecks).every(c => c.checked); }); });
+        els.cancelBtn.onclick = () => els.eventModal.style.display = 'none';
+        els.closeDayView.onclick = () => els.dayViewModal.style.display = 'none';
+        window.onclick = (e) => { 
+            if (e.target == els.eventModal) els.eventModal.style.display = "none"; 
+            if (e.target == els.dayViewModal) els.dayViewModal.style.display = "none"; 
+            if (e.target == els.pinModal) els.pinModal.style.display = "none"; 
+            if (e.target == els.filterModal) els.filterModal.style.display = "none"; 
+            if (e.target == els.settingsModal) els.settingsModal.style.display = "none"; 
+            if (e.target == els.changePinModal) els.changePinModal.style.display = "none";
+            if (e.target == els.cleanupModal) els.cleanupModal.style.display = "none";
+            if (e.target == els.publicExportModal) els.publicExportModal.style.display = "none";
+        };
+        
+        els.mainHeaderLogo.addEventListener('dblclick', () => { 
+            els.headerActionsLeft.classList.toggle('force-hide'); els.headerActionsRight.classList.toggle('force-hide'); 
+            if (els.headerActionsRight.classList.contains('force-hide')) { els.cleanModeLegend.classList.add('force-show-flex'); } else { els.cleanModeLegend.classList.remove('force-show-flex'); }
+            if (currentView !== 'month') { els.calendarNavHeader.classList.toggle('hidden'); } else { els.calendarNavHeader.classList.remove('hidden'); }
+        });
+
+        els.weekViewBtn.addEventListener('click', () => { if (currentView === 'month') { currentView = 'week'; els.weekViewBtn.innerText = "See Monthly View"; } else { currentView = 'month'; els.weekViewBtn.innerText = "See Weekly View"; } renderCalendar(); });
+        els.prevBtn.addEventListener('click', () => { if (currentView === 'month') currentDate.setMonth(currentDate.getMonth() - 1); else if (currentView === 'day') currentDate.setDate(currentDate.getDate() - 1); else currentDate.setDate(currentDate.getDate() - 7); renderCalendar(); });
+        els.nextBtn.addEventListener('click', () => { if (currentView === 'month') currentDate.setMonth(currentDate.getMonth() + 1); else if (currentView === 'day') currentDate.setDate(currentDate.getDate() + 1); else currentDate.setDate(currentDate.getDate() + 7); renderCalendar(); });
+        els.addEventBtn.addEventListener('click', () => { openAddModal(getFormattedDate(new Date())); });
+
+        els.saveEventBtn.addEventListener('click', async () => {
+            const date = els.eventDate.value; const name = els.eventName.value; if (!date || !name) { alert("Please fill in Date and Event Name"); return; }
+            const designator = els.eventDesignator.value;
+            let selectedClasses = []; 
+            if (designator === 'Birthday') { const val = els.birthdayClassSelect.value; if(val) selectedClasses.push(val); } else { document.querySelectorAll('.class-check:checked').forEach(cb => selectedClasses.push(cb.value)); }
+            
+            const getEventPayload = (dStr) => {
+                const isBirthday = designator === 'Birthday'; const isHoliday = designator === 'Holiday';
+                if (isBirthday) { return { date: dStr, name, notes: els.eventNotes.value, designator, classes: selectedClasses, recurrenceId: null, period: 'other' }; }
+                if (isHoliday) { return { date: dStr, name, notes: els.eventNotes.value, designator, recurrenceId: null, period: 'other' }; }
+                const isNoSchool = isWeekendOrNoSchool(dStr); const hasTimeframe = isNoSchool || els.eventPeriod.value === 'other' || els.customTimeCheck.checked;
+                return { date: dStr, name, location: els.eventLocation.value, notes: els.eventNotes.value, period: isNoSchool ? 'weekend' : els.eventPeriod.value, startTime: hasTimeframe ? els.startTime.value : null, endTime: hasTimeframe ? els.endTime.value : null, classes: selectedClasses, mandatory: els.mandatoryCheck.checked, tentative: els.tentativeCheck.checked, designator };
+            };
+
+            els.saveEventBtn.innerText = "Saving...";
+            try {
+                if (editingEventId) {
+                    const eventToEdit = events.find(e => e.id === editingEventId);
+                    if (eventToEdit && eventToEdit.recurrenceId) {
+                        const q = query(collection(db, "events"), where("recurrenceId", "==", eventToEdit.recurrenceId));
+                        const querySnapshot = await getDocs(q);
+                        const batch = writeBatch(db);
+                        const basePayload = getEventPayload(date); 
+                        delete basePayload.date; delete basePayload.recurrenceId; 
+                        querySnapshot.forEach((docSnap) => { batch.update(docSnap.ref, basePayload); });
+                        await batch.commit();
+                    } else {
+                        const payload = getEventPayload(date); delete payload.recurrenceId; await updateDoc(doc(db, "events", editingEventId), payload);
+                    }
+                } 
+                else {
+                    if (designator === 'Holiday') {
+                        const startDate = new Date(date + 'T12:00:00');
+                        const recurrenceId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+                        const batch = writeBatch(db);
+                        for (let i = 0; i < 50; i++) {
+                             let ptr = new Date(startDate); ptr.setFullYear(startDate.getFullYear() + i);
+                             const dStr = getFormattedDate(ptr); const payload = getEventPayload(dStr); payload.recurrenceId = recurrenceId; payload.classes = []; 
+                             const newRef = doc(collection(db, "events")); batch.set(newRef, payload);
+                        }
+                        await batch.commit();
+                    } else if (designator === 'Birthday') {
+                        if (selectedClasses.length === 0) { alert("Please select a class year for the birthday."); els.saveEventBtn.innerText = "Save"; return; }
+                        const maxClassYear = 2000 + parseInt(selectedClasses[0]);
+                        const gradDate = new Date(maxClassYear, 5, 1); 
+                        const startDate = new Date(date + 'T12:00:00');
+                        const recurrenceId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+                        const batch = writeBatch(db);
+                        let ptr = new Date(startDate); let count = 0;
+                        while (ptr < gradDate) {
+                            const dStr = getFormattedDate(ptr); const payload = getEventPayload(dStr); payload.recurrenceId = recurrenceId;
+                            const newRef = doc(collection(db, "events")); batch.set(newRef, payload);
+                            ptr.setFullYear(ptr.getFullYear() + 1); count++;
+                        }
+                        if (count > 0) await batch.commit(); else alert("Birthday is after graduation date.");
+                    } else if (els.recurrenceCheck.checked) {
+                        const freq = els.recurrenceFreq.value; const endDateStr = els.recurrenceEndDate.value;
+                        if (!endDateStr) { alert("End Date is required for recurring events."); els.saveEventBtn.innerText = "Save"; return; }
+                        const startDate = new Date(date + 'T12:00:00'); const endDate = new Date(endDateStr + 'T12:00:00');
+                        if (endDate < startDate) { alert("End Date cannot be before Start Date."); els.saveEventBtn.innerText = "Save"; return; }
+                        const recurrenceId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+                        const batch = writeBatch(db);
+                        let ptr = new Date(startDate); let count = 0;
+                        const selectedDays = []; if (freq === 'weekly') { recurDayChecks.forEach(cb => { if(cb.checked) selectedDays.push(parseInt(cb.value)); }); if(selectedDays.length === 0) { alert("Please select at least one day for weekly recurrence."); els.saveEventBtn.innerText = "Save"; return; } }
+                        while (ptr <= endDate) {
+                            let shouldAdd = false;
+                            if (freq === 'daily') { shouldAdd = true; } else if (freq === 'weekly') { if (selectedDays.includes(ptr.getDay())) shouldAdd = true; } else if (freq === 'yearly') { if (ptr.getDate() === startDate.getDate() && ptr.getMonth() === startDate.getMonth()) shouldAdd = true; }
+                            if (shouldAdd) {
+                                const dStr = getFormattedDate(ptr); const payload = getEventPayload(dStr); payload.recurrenceId = recurrenceId; 
+                                const newRef = doc(collection(db, "events")); batch.set(newRef, payload); count++;
+                            }
+                            ptr.setDate(ptr.getDate() + 1);
+                        }
+                        if (count > 0) { await batch.commit(); } else { alert("No dates matched criteria."); }
+                    } else {
+                        await addDoc(collection(db, "events"), getEventPayload(date));
+                    }
+                }
+                await loadData(); els.eventModal.style.display = 'none'; 
+            } catch (e) { alert("Error saving event: " + e.message); } finally { els.saveEventBtn.innerText = "Save"; }
+        });
+
+        loadData();
+    </script>
 </body>
 </html>
