@@ -596,7 +596,7 @@
         let semesterSettings = { start: null, end: null };
         let generatedSchedule = {}; 
         
-        let currentPin = null; // No longer hardcoded.
+        let currentPin = null; // Temp Pin.
 
         let isEditMode = false;
         let isSettingsUnlocked = false; 
@@ -1383,7 +1383,8 @@
         els.cancelCleanupBtn.onclick = () => els.cleanupModal.style.display = 'none';
 
         els.executeCleanupBtn.onclick = async () => {
-            if (els.cleanupPinInput.value !== currentPin) { alert("Incorrect PIN. Cleanup aborted."); return; }
+            if (els.cleanupPinInput.value === currentPin) { 
+                isSettingsUnlocked = true;
             if (!confirm("Are you absolutely sure? This will permanently delete events older than the selected timeframe.")) { return; }
 
             const months = parseInt(els.cleanupTimeframe.value);
