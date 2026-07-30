@@ -481,8 +481,8 @@
             <button id="viewLegendBtn" class="header-btn legend-btn" style="margin-top: 10px;">View Legend</button>
         </div>
         <div class="main-header">
-            <img src="https://www.aviatorgear.com/images/product/large/39950.jpg" alt="CS40 Logo" class="header-logo" id="mainHeaderLogo" title="Double Click to Toggle Clean Mode">
-            <h1 class="header-title" id="mainHeaderTitle">CS40 Calendar</h1>
+            <img src="https://www.usafa.edu/app/uploads/CS33.jpg" alt="CS33 Logo" class="header-logo" id="mainHeaderLogo" title="Double Click to Toggle Clean Mode">
+            <h1 class="header-title" id="mainHeaderTitle">CS33 Calendar</h1>
             <button id="mobileSettingsBtn" class="mobile-settings-icon">⚙️</button>
         </div>
         <div class="header-actions-right" id="headerActionsRight">
@@ -578,9 +578,9 @@
         // --- PASTE YOUR FIREBASE CONFIG HERE ---
         const firebaseConfig = {
             apiKey: "AIzaSyCyoUxG8Qfc6g5kwgqRK0Q2J0k1tXtQeVs",
-            authDomain: "cs40-calendar.firebaseapp.com",
-            projectId: "cs40-calendar",
-            storageBucket: "cs40-calendar.firebasestorage.app",
+            authDomain: "cs33-calendar.firebaseapp.com",
+            projectId: "cs33-calendar",
+            storageBucket: "cs33-calendar.firebasestorage.app",
             messagingSenderId: "661443751516",
             appId: "1:661443751516:web:ddee708ab5a1014cadc099"
         };
@@ -884,7 +884,7 @@
         }
 
         function renderMonthView() {
-            els.mainHeaderTitle.innerText = "CS40 Calendar";
+            els.mainHeaderTitle.innerText = "CS33 Calendar";
             els.mainHeaderTitle.style.color = "#333";
             const todayStr = getFormattedDate(new Date());
             const year = currentDate.getFullYear();
@@ -1203,7 +1203,7 @@
              
              if (format === 'vcs') {
                  // vCalendar 1.0 (VCS)
-                 icsContent = "BEGIN:VCALENDAR\nVERSION:1.0\nPRODID:-//CS40 Calendar//EN\n";
+                 icsContent = "BEGIN:VCALENDAR\nVERSION:1.0\nPRODID:-//CS33 Calendar//EN\n";
                  exportEvents.forEach(evt => {
                      // Safety checks for corrupt data
                      if (!evt.date || typeof evt.date !== 'string') return;
@@ -1229,11 +1229,11 @@
                      icsContent += "END:VEVENT\n";
                  });
                  icsContent += "END:VCALENDAR";
-                 downloadFile(icsContent, "cs40_calendar.vcs", "text/x-vcalendar");
+                 downloadFile(icsContent, "cs33_calendar.vcs", "text/x-vcalendar");
              } 
              else {
                  // iCalendar 2.0 (ICS) - Apple
-                 icsContent = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//CS40 Calendar//EN\nCALSCALE:GREGORIAN\n";
+                 icsContent = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//CS33 Calendar//EN\nCALSCALE:GREGORIAN\n";
                  exportEvents.forEach(evt => {
                      // Safety check
                      if (!evt.date || typeof evt.date !== 'string') return;
@@ -1286,7 +1286,7 @@
                      icsContent += "END:VEVENT\n";
                  });
                  icsContent += "END:VCALENDAR";
-                 downloadFile(icsContent, "cs40_calendar.ics", "text/calendar");
+                 downloadFile(icsContent, "cs33_calendar.ics", "text/calendar");
              }
         }
 
@@ -1368,7 +1368,7 @@
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj, null, 2));
             const downloadAnchorNode = document.createElement('a');
             downloadAnchorNode.setAttribute("href", dataStr);
-            downloadAnchorNode.setAttribute("download", "cs40_calendar_backup_" + getFormattedDate(new Date()) + ".json");
+            downloadAnchorNode.setAttribute("download", "cs33_calendar_backup_" + getFormattedDate(new Date()) + ".json");
             document.body.appendChild(downloadAnchorNode); 
             downloadAnchorNode.click();
             downloadAnchorNode.remove();
